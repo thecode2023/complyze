@@ -3,7 +3,17 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { MoreHorizontal, ExternalLink, FileSearch, ArrowRight, Trash2 } from "lucide-react";
+import {
+  MoreHorizontal,
+  ExternalLink,
+  FileSearch,
+  ArrowRight,
+  Trash2,
+  Shield,
+  Eye,
+  Compass,
+  ChevronDown,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { JURISDICTION_OPTIONS } from "@/lib/types/user";
 import type { JurisdictionPriority } from "@/lib/types/user";
@@ -20,16 +30,14 @@ export interface JurisdictionData {
   lastUpdateDate: string | null;
 }
 
-interface JurisdictionCardProps {
-  data: JurisdictionData;
-  onChangePriority: (code: string, priority: JurisdictionPriority) => void;
-  onRemove: (code: string) => void;
-}
+/* ------------------------------------------------------------------ */
+/* Compact Jurisdiction Card                                           */
+/* ------------------------------------------------------------------ */
 
 const velocityConfig = {
-  high: { label: "High", color: "text-red-400 bg-red-500/15" },
-  medium: { label: "Med", color: "text-amber-400 bg-amber-500/15" },
-  low: { label: "Low", color: "text-emerald-400 bg-emerald-500/15" },
+  high: { label: "High", color: "text-red-400 bg-red-500/10" },
+  medium: { label: "Med", color: "text-amber-400 bg-amber-500/10" },
+  low: { label: "Low", color: "text-emerald-400 bg-emerald-500/10" },
 };
 
 const priorityLabels: Record<JurisdictionPriority, string> = {
@@ -38,10 +46,17 @@ const priorityLabels: Record<JurisdictionPriority, string> = {
   expansion: "Expansion Target",
 };
 
-export function JurisdictionCard({ data, onChangePriority, onRemove }: JurisdictionCardProps) {
+interface JurisdictionCardProps {
+  data: JurisdictionData;
+  onChangePriority: (code: string, priority: JurisdictionPriority) => void;
+  onRemove: (code: string) => void;
+}
+
+function JurisdictionCard({ data, onChangePriority, onRemove }: JurisdictionCardProps) {
   const jurisdiction = JURISDICTION_OPTIONS.find((j) => j.code === data.code);
   const vel = velocityConfig[data.velocity];
   const [menuOpen, setMenuOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -59,67 +74,77 @@ export function JurisdictionCard({ data, onChangePriority, onRemove }: Jurisdict
   );
 
   return (
-    <div className="rounded-lg border border-border p-3 transition-colors hover:border-primary/30 hover:bg-accent/20 relative group">
-      <div className="flex items-start justify-between gap-2">
-        <Link
-          href={`/feed?jurisdiction=${data.code}`}
-          className="flex items-center gap-2 min-w-0 flex-1"
-        >
-          <span className="text-base shrink-0">{jurisdiction?.flag ?? "🌐"}</span>
-          <span className="font-medium text-sm truncate">
-            {jurisdiction?.name ?? data.code}
-          </span>
-        </Link>
+    <div className="rounded-md border border-border/60 bg-card/50 transition-all hover:border-border hover:bg-card group">
+      {/* Main row — always visible, compact */}
+      <div
+        className="flex items-center gap-2 px-2.5 py-2 cursor-pointer select-none"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <span className="text-sm shrink-0">{jurisdiction?.flag ?? "🌐"}</span>
+        <span className="text-xs font-medium truncate flex-1">
+          {jurisdiction?.name ?? data.code}
+        </span>
+        <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+          {data.regulationCount}
+        </span>
+        <span className={cn("rounded px-1.5 py-px text-[9px] font-semibold shrink-0", vel.color)}>
+          {vel.label}
+        </span>
 
-        {/* Action menu */}
+        {/* Action menu trigger */}
         <div className="relative" ref={menuRef}>
           <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen(!menuOpen);
+            }}
+            className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
           >
-            <MoreHorizontal className="h-3.5 w-3.5" />
+            <MoreHorizontal className="h-3 w-3" />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-7 z-50 w-48 rounded-lg border border-border bg-popover shadow-lg py-1 text-sm">
+            <div className="absolute right-0 top-6 z-50 w-44 rounded-md border border-border bg-popover shadow-lg py-0.5 text-xs">
               <Link
                 href={`/feed?jurisdiction=${data.code}`}
-                className="flex items-center gap-2 px-3 py-1.5 hover:bg-accent text-popover-foreground"
+                className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-accent text-popover-foreground"
                 onClick={() => setMenuOpen(false)}
               >
-                <ExternalLink className="h-3.5 w-3.5" />
+                <ExternalLink className="h-3 w-3" />
                 View Regulations
               </Link>
               <Link
                 href="/audit"
-                className="flex items-center gap-2 px-3 py-1.5 hover:bg-accent text-popover-foreground"
+                className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-accent text-popover-foreground"
                 onClick={() => setMenuOpen(false)}
               >
-                <FileSearch className="h-3.5 w-3.5" />
+                <FileSearch className="h-3 w-3" />
                 Run Audit
               </Link>
-              <div className="my-1 h-px bg-border" />
+              <div className="my-0.5 h-px bg-border" />
               {otherPriorities.map((p) => (
                 <button
                   key={p}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onChangePriority(data.code, p);
                     setMenuOpen(false);
                   }}
-                  className="flex items-center gap-2 px-3 py-1.5 hover:bg-accent w-full text-left text-popover-foreground"
+                  className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-accent w-full text-left text-popover-foreground"
                 >
-                  <ArrowRight className="h-3.5 w-3.5" />
-                  Move to {priorityLabels[p]}
+                  <ArrowRight className="h-3 w-3" />
+                  {priorityLabels[p]}
                 </button>
               ))}
-              <div className="my-1 h-px bg-border" />
+              <div className="my-0.5 h-px bg-border" />
               <button
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   onRemove(data.code);
                   setMenuOpen(false);
                 }}
-                className="flex items-center gap-2 px-3 py-1.5 hover:bg-destructive/10 w-full text-left text-destructive"
+                className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-destructive/10 w-full text-left text-destructive"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-3 w-3" />
                 Remove
               </button>
             </div>
@@ -127,132 +152,227 @@ export function JurisdictionCard({ data, onChangePriority, onRemove }: Jurisdict
         </div>
       </div>
 
-      <div className="mt-2 space-y-1.5">
-        {/* Regulations + Velocity inline */}
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">
-            {data.regulationCount} regulation{data.regulationCount !== 1 ? "s" : ""}
-          </span>
-          <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", vel.color)}>
-            {vel.label} {data.velocityScore != null ? `(${data.velocityScore})` : ""}
-          </span>
-        </div>
-
-        {/* Audit coverage mini bar */}
-        <div className="space-y-0.5">
-          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+      {/* Expanded details — shown on click */}
+      {expanded && (
+        <div className="border-t border-border/40 px-2.5 py-2 space-y-1.5 text-[10px] text-muted-foreground">
+          <div className="flex items-center justify-between">
             <span>Audit Coverage</span>
-            <span>{data.auditCoverage}%</span>
+            <div className="flex items-center gap-1.5">
+              <div className="h-1 w-16 rounded-full bg-muted overflow-hidden">
+                <div
+                  className={cn(
+                    "h-full rounded-full",
+                    data.auditCoverage >= 70
+                      ? "bg-emerald-500"
+                      : data.auditCoverage >= 40
+                        ? "bg-amber-500"
+                        : "bg-red-500"
+                  )}
+                  style={{ width: `${data.auditCoverage}%` }}
+                />
+              </div>
+              <span className="tabular-nums">{data.auditCoverage}%</span>
+            </div>
           </div>
-          <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
-            <div
-              className={cn(
-                "h-full rounded-full transition-all duration-500",
-                data.auditCoverage >= 70
-                  ? "bg-emerald-500"
-                  : data.auditCoverage >= 40
-                    ? "bg-amber-500"
-                    : "bg-red-500"
-              )}
-              style={{ width: `${data.auditCoverage}%` }}
-            />
+          <div className="flex items-center justify-between">
+            <span>Velocity Score</span>
+            <span className="tabular-nums">{data.velocityScore ?? 0}/100</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>Last Update</span>
+            <span>
+              {data.lastUpdateDate
+                ? formatDistanceToNow(new Date(data.lastUpdateDate), { addSuffix: true })
+                : "None"}
+            </span>
           </div>
         </div>
-
-        {/* Last update */}
-        <div className="text-[10px] text-muted-foreground">
-          {data.lastUpdateDate
-            ? `Updated ${formatDistanceToNow(new Date(data.lastUpdateDate), { addSuffix: true })}`
-            : "No recent changes"}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* Categorized Jurisdictions Container                                 */
+/* Column                                                              */
 /* ------------------------------------------------------------------ */
 
 const categoryConfig: Record<
   JurisdictionPriority,
-  { label: string; accent: string; headerBg: string }
+  {
+    label: string;
+    icon: typeof Shield;
+    bg: string;
+    headerColor: string;
+    badgeColor: string;
+    emptyText: string;
+  }
 > = {
   active: {
     label: "Active Compliance",
-    accent: "border-l-emerald-500",
-    headerBg: "bg-emerald-500/10 text-emerald-400",
+    icon: Shield,
+    bg: "bg-emerald-500/[0.03]",
+    headerColor: "text-emerald-400",
+    badgeColor: "bg-emerald-500/15 text-emerald-400",
+    emptyText: "No active jurisdictions",
   },
   monitoring: {
     label: "Monitoring",
-    accent: "border-l-amber-500",
-    headerBg: "bg-amber-500/10 text-amber-400",
+    icon: Eye,
+    bg: "bg-amber-500/[0.03]",
+    headerColor: "text-amber-400",
+    badgeColor: "bg-amber-500/15 text-amber-400",
+    emptyText: "No jurisdictions being monitored",
   },
   expansion: {
     label: "Expansion Targets",
-    accent: "border-l-blue-500",
-    headerBg: "bg-blue-500/10 text-blue-400",
+    icon: Compass,
+    bg: "bg-blue-500/[0.03]",
+    headerColor: "text-blue-400",
+    badgeColor: "bg-blue-500/15 text-blue-400",
+    emptyText: "No expansion targets",
   },
 };
 
-interface CategorizedJurisdictionsProps {
+/* ------------------------------------------------------------------ */
+/* Kanban Command Center                                               */
+/* ------------------------------------------------------------------ */
+
+interface JurisdictionCommandCenterProps {
   jurisdictions: JurisdictionData[];
   onChangePriority: (code: string, priority: JurisdictionPriority) => void;
   onRemove: (code: string) => void;
 }
 
-export function CategorizedJurisdictions({
+export function JurisdictionCommandCenter({
   jurisdictions,
   onChangePriority,
   onRemove,
-}: CategorizedJurisdictionsProps) {
+}: JurisdictionCommandCenterProps) {
   const categories: JurisdictionPriority[] = ["active", "monitoring", "expansion"];
 
+  // Mobile accordion state
+  const [openAccordion, setOpenAccordion] = useState<JurisdictionPriority | null>("active");
+
   return (
-    <div className="space-y-4">
-      <h3 className="text-sm font-medium">Tracked Jurisdictions</h3>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold tracking-tight">Jurisdiction Command Center</h3>
+        <span className="text-[10px] text-muted-foreground tabular-nums">
+          {jurisdictions.length} tracked
+        </span>
+      </div>
 
-      {jurisdictions.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-4 text-center">
-          No jurisdictions tracked yet.
-        </p>
-      ) : (
-        <div className="space-y-4 max-h-[520px] overflow-y-auto pr-1">
-          {categories.map((cat) => {
-            const items = jurisdictions.filter((j) => j.priority === cat);
-            if (items.length === 0) return null;
-            const cfg = categoryConfig[cat];
+      {/* Desktop / Tablet: 3-column kanban */}
+      <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {categories.map((cat) => {
+          const cfg = categoryConfig[cat];
+          const Icon = cfg.icon;
+          const items = jurisdictions.filter((j) => j.priority === cat);
 
-            return (
-              <div key={cat} className={cn("border-l-2 pl-3", cfg.accent)}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {cfg.label}
-                  </span>
-                  <span
-                    className={cn(
-                      "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
-                      cfg.headerBg
-                    )}
-                  >
-                    {items.length}
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  {items.map((j) => (
+          return (
+            <div
+              key={cat}
+              className={cn(
+                "rounded-lg border border-border/60 overflow-hidden flex flex-col",
+                cfg.bg
+              )}
+            >
+              {/* Column header */}
+              <div className="flex items-center gap-2 px-3 py-2 border-b border-border/40">
+                <Icon className={cn("h-3.5 w-3.5", cfg.headerColor)} />
+                <span className={cn("text-xs font-semibold uppercase tracking-wider", cfg.headerColor)}>
+                  {cfg.label}
+                </span>
+                <span
+                  className={cn(
+                    "ml-auto rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums",
+                    cfg.badgeColor
+                  )}
+                >
+                  {items.length}
+                </span>
+              </div>
+
+              {/* Cards */}
+              <div className="p-2 space-y-1.5 flex-1 min-h-[80px] max-h-[400px] overflow-y-auto">
+                {items.length === 0 ? (
+                  <div className="flex items-center justify-center h-full min-h-[60px] text-[10px] text-muted-foreground/60">
+                    {cfg.emptyText}
+                  </div>
+                ) : (
+                  items.map((j) => (
                     <JurisdictionCard
                       key={j.code}
                       data={j}
                       onChangePriority={onChangePriority}
                       onRemove={onRemove}
                     />
-                  ))}
-                </div>
+                  ))
+                )}
               </div>
-            );
-          })}
-        </div>
-      )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Mobile: Accordion */}
+      <div className="sm:hidden space-y-2">
+        {categories.map((cat) => {
+          const cfg = categoryConfig[cat];
+          const Icon = cfg.icon;
+          const items = jurisdictions.filter((j) => j.priority === cat);
+          const isOpen = openAccordion === cat;
+
+          return (
+            <div
+              key={cat}
+              className={cn("rounded-lg border border-border/60 overflow-hidden", cfg.bg)}
+            >
+              <button
+                onClick={() => setOpenAccordion(isOpen ? null : cat)}
+                className="flex items-center gap-2 px-3 py-2.5 w-full text-left"
+              >
+                <Icon className={cn("h-3.5 w-3.5", cfg.headerColor)} />
+                <span className={cn("text-xs font-semibold uppercase tracking-wider flex-1", cfg.headerColor)}>
+                  {cfg.label}
+                </span>
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums",
+                    cfg.badgeColor
+                  )}
+                >
+                  {items.length}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-3.5 w-3.5 text-muted-foreground transition-transform",
+                    isOpen && "rotate-180"
+                  )}
+                />
+              </button>
+              {isOpen && (
+                <div className="p-2 pt-0 space-y-1.5 border-t border-border/40">
+                  {items.length === 0 ? (
+                    <div className="flex items-center justify-center py-4 text-[10px] text-muted-foreground/60">
+                      {cfg.emptyText}
+                    </div>
+                  ) : (
+                    items.map((j) => (
+                      <JurisdictionCard
+                        key={j.code}
+                        data={j}
+                        onChangePriority={onChangePriority}
+                        onRemove={onRemove}
+                      />
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

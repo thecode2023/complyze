@@ -4,7 +4,6 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import {
-  Shield,
   Globe,
   BookOpen,
   Bell,
@@ -17,19 +16,17 @@ import {
   FileText,
   RefreshCw,
   CalendarClock,
-  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ComplianceGauge } from "@/components/dashboard/ComplianceGauge";
 import { ComplianceTrend, type PostureSnapshot } from "@/components/dashboard/ComplianceTrend";
 import {
-  CategorizedJurisdictions,
+  JurisdictionCommandCenter,
   type JurisdictionData,
 } from "@/components/dashboard/JurisdictionCard";
 import { AlertsFeed, type ComplianceAlert, type WeeklyDigest } from "@/components/dashboard/AlertsFeed";
 import { ProfileEditor } from "@/components/dashboard/ProfileEditor";
-import { JURISDICTION_OPTIONS } from "@/lib/types/user";
 import type { UserProfile, JurisdictionPriority } from "@/lib/types/user";
 import type { VelocityMap } from "@/lib/utils/velocity";
 import type { QuickStats, JurisdictionExtra } from "./page";
@@ -64,11 +61,9 @@ export function DashboardClient({
   const router = useRouter();
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
 
-  // Derive overall score from latest snapshot, or a default
   const latestSnapshot = snapshots[0];
   const overallScore = latestSnapshot?.overall_score ?? 65;
 
-  // Build jurisdiction data from profile
   const jurisdictionScores: Record<string, number> =
     latestSnapshot?.jurisdiction_scores
       ? (typeof latestSnapshot.jurisdiction_scores === "string"
@@ -76,7 +71,6 @@ export function DashboardClient({
           : latestSnapshot.jurisdiction_scores)
       : {};
 
-  // Resolve priorities — default to "active" if not set
   const priorities: Record<string, JurisdictionPriority> =
     profile.jurisdiction_priorities ?? {};
 
@@ -102,7 +96,6 @@ export function DashboardClient({
     };
   });
 
-  // Persist priority changes
   const handleChangePriority = useCallback(
     async (code: string, newPriority: JurisdictionPriority) => {
       const updated = { ...priorities, [code]: newPriority };
@@ -134,19 +127,13 @@ export function DashboardClient({
     [profile.jurisdictions, priorities, router]
   );
 
-  function handleAlertUpdate() {
-    router.refresh();
-  }
-
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-5">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-4">
       {/* ============================================================= */}
-      {/* Overview Bar — gradient background                             */}
+      {/* 1. Compliance Overview Bar                                     */}
       {/* ============================================================= */}
       <div className="relative rounded-xl border border-border overflow-hidden">
-        {/* Gradient background */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.06] via-card to-card" />
-        {/* Subtle grid pattern */}
         <div
           className="absolute inset-0 opacity-[0.03]"
           style={{
@@ -155,28 +142,16 @@ export function DashboardClient({
             backgroundSize: "24px 24px",
           }}
         />
-
-        <div className="relative p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-            <div className="relative">
+        <div className="relative p-4 sm:p-5">
+          <div className="flex flex-col sm:flex-row items-center gap-5">
+            <div className="relative shrink-0">
               <ComplianceGauge score={overallScore} size="lg" label="Overall Score" />
               <ScoreInfoButton />
             </div>
-
-            <div className="flex-1 w-full space-y-3">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full">
-                <StatCard
-                  icon={Globe}
-                  label="Jurisdictions"
-                  value={profile.jurisdictions.length}
-                  accent="blue"
-                />
-                <StatCard
-                  icon={BookOpen}
-                  label="Regulations"
-                  value={trackedRegCount}
-                  accent="purple"
-                />
+            <div className="flex-1 w-full space-y-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 w-full">
+                <StatCard icon={Globe} label="Jurisdictions" value={profile.jurisdictions.length} accent="blue" />
+                <StatCard icon={BookOpen} label="Regulations" value={trackedRegCount} accent="purple" />
                 <StatCard
                   icon={Bell}
                   label="Unread Alerts"
@@ -188,16 +163,14 @@ export function DashboardClient({
                   label="Last Updated"
                   displayValue={
                     latestSnapshot
-                      ? format(new Date(latestSnapshot.snapshot_date), "MMM d, yyyy")
+                      ? format(new Date(latestSnapshot.snapshot_date), "MMM d")
                       : "\u2014"
                   }
                   accent="green"
                 />
               </div>
-
-              {/* Compliance snapshot sentence */}
-              <p className="text-xs text-muted-foreground leading-relaxed pl-0.5">
-                You are tracking{" "}
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Tracking{" "}
                 <span className="font-semibold text-foreground">{trackedRegCount}</span>{" "}
                 regulation{trackedRegCount !== 1 ? "s" : ""} across{" "}
                 <span className="font-semibold text-foreground">
@@ -207,10 +180,8 @@ export function DashboardClient({
                 {attentionCount > 0 ? (
                   <>
                     {" "}
-                    <span className="font-semibold text-amber-500">
-                      {attentionCount}
-                    </span>{" "}
-                    require attention.
+                    <span className="font-semibold text-amber-500">{attentionCount}</span> require
+                    attention.
                   </>
                 ) : (
                   " All systems nominal."
@@ -222,19 +193,11 @@ export function DashboardClient({
       </div>
 
       {/* ============================================================= */}
-      {/* Quick Stats Pills                                              */}
+      {/* 2. Quick Stats Pills                                           */}
       {/* ============================================================= */}
       <div className="flex flex-wrap gap-2">
-        <StatPill
-          icon={Gavel}
-          label={`${quickStats.enactedCount} enacted`}
-          color="text-emerald-500"
-        />
-        <StatPill
-          icon={FileText}
-          label={`${quickStats.proposedCount} proposed`}
-          color="text-amber-500"
-        />
+        <StatPill icon={Gavel} label={`${quickStats.enactedCount} enacted`} color="text-emerald-500" />
+        <StatPill icon={FileText} label={`${quickStats.proposedCount} proposed`} color="text-amber-500" />
         <StatPill
           icon={RefreshCw}
           label={`${quickStats.updatedThisMonth} updated this month`}
@@ -252,58 +215,56 @@ export function DashboardClient({
       </div>
 
       {/* ============================================================= */}
-      {/* Main Grid                                                      */}
+      {/* 3. Compliance Trend — full width                               */}
       {/* ============================================================= */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* Column 1: Compliance Trend */}
-        <div className="rounded-lg border border-border bg-card p-4 sm:p-5 md:col-span-2 lg:col-span-1">
-          <ComplianceTrend snapshots={snapshots} />
-        </div>
-
-        {/* Column 2: Categorized Jurisdiction Cards */}
-        <div className="rounded-lg border border-border bg-card p-4 sm:p-5">
-          <CategorizedJurisdictions
-            jurisdictions={jurisdictionData}
-            onChangePriority={handleChangePriority}
-            onRemove={handleRemoveJurisdiction}
-          />
-        </div>
-
-        {/* Column 3: Activity Feed */}
-        <div className="rounded-lg border border-border bg-card p-4 sm:p-5 md:col-span-2 lg:col-span-1">
-          <AlertsFeed
-            alerts={alerts}
-            digest={digest}
-            onAlertUpdate={handleAlertUpdate}
-          />
-        </div>
+      <div className="rounded-lg border border-border bg-card p-4">
+        <ComplianceTrend snapshots={snapshots} />
       </div>
 
       {/* ============================================================= */}
-      {/* Quick Actions Bar                                              */}
+      {/* 4. Jurisdiction Command Center — full width 3-col kanban       */}
+      {/* ============================================================= */}
+      <JurisdictionCommandCenter
+        jurisdictions={jurisdictionData}
+        onChangePriority={handleChangePriority}
+        onRemove={handleRemoveJurisdiction}
+      />
+
+      {/* ============================================================= */}
+      {/* 5. Activity Feed — full width                                  */}
       {/* ============================================================= */}
       <div className="rounded-lg border border-border bg-card p-4">
-        <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
-          <Button variant="outline" asChild>
+        <AlertsFeed
+          alerts={alerts}
+          digest={digest}
+          onAlertUpdate={() => router.refresh()}
+        />
+      </div>
+
+      {/* ============================================================= */}
+      {/* 6. Quick Actions                                               */}
+      {/* ============================================================= */}
+      <div className="rounded-lg border border-border bg-card p-3">
+        <div className="flex flex-wrap gap-2.5 justify-center sm:justify-start">
+          <Button variant="outline" size="sm" asChild>
             <a href="/audit">
-              <FileSearch className="mr-2 h-4 w-4" />
-              Run New Audit
+              <FileSearch className="mr-1.5 h-3.5 w-3.5" />
+              Run Audit
             </a>
           </Button>
-          <Button variant="outline" asChild>
+          <Button variant="outline" size="sm" asChild>
             <a href="/feed">
-              <Newspaper className="mr-2 h-4 w-4" />
-              Browse Regulations
+              <Newspaper className="mr-1.5 h-3.5 w-3.5" />
+              Regulations
             </a>
           </Button>
-          <Button variant="outline" onClick={() => setProfileEditorOpen(true)}>
-            <UserCog className="mr-2 h-4 w-4" />
+          <Button variant="outline" size="sm" onClick={() => setProfileEditorOpen(true)}>
+            <UserCog className="mr-1.5 h-3.5 w-3.5" />
             Edit Profile
           </Button>
         </div>
       </div>
 
-      {/* Profile Editor Sheet */}
       <ProfileEditor
         profile={profile}
         open={profileEditorOpen}
@@ -314,35 +275,15 @@ export function DashboardClient({
 }
 
 /* ------------------------------------------------------------------ */
-/* Stat Card (overview bar)                                            */
+/* Stat Card                                                           */
 /* ------------------------------------------------------------------ */
 
 const accentStyles = {
-  blue: {
-    border: "border-l-blue-500",
-    icon: "text-blue-500 bg-blue-500/10",
-    value: "text-foreground",
-  },
-  purple: {
-    border: "border-l-purple-500",
-    icon: "text-purple-500 bg-purple-500/10",
-    value: "text-foreground",
-  },
-  red: {
-    border: "border-l-red-500",
-    icon: "text-red-500 bg-red-500/10",
-    value: "text-red-500",
-  },
-  green: {
-    border: "border-l-emerald-500",
-    icon: "text-emerald-500 bg-emerald-500/10",
-    value: "text-foreground",
-  },
-  muted: {
-    border: "border-l-muted-foreground/30",
-    icon: "text-muted-foreground bg-muted",
-    value: "text-muted-foreground",
-  },
+  blue: { border: "border-l-blue-500", icon: "text-blue-500 bg-blue-500/10", value: "text-foreground" },
+  purple: { border: "border-l-purple-500", icon: "text-purple-500 bg-purple-500/10", value: "text-foreground" },
+  red: { border: "border-l-red-500", icon: "text-red-500 bg-red-500/10", value: "text-red-500" },
+  green: { border: "border-l-emerald-500", icon: "text-emerald-500 bg-emerald-500/10", value: "text-foreground" },
+  muted: { border: "border-l-muted-foreground/30", icon: "text-muted-foreground bg-muted", value: "text-muted-foreground" },
 };
 
 function StatCard({
@@ -358,30 +299,24 @@ function StatCard({
   displayValue?: string;
   accent?: keyof typeof accentStyles;
 }) {
-  const style = accentStyles[accent];
-
+  const s = accentStyles[accent];
   return (
-    <div
-      className={cn(
-        "flex items-center gap-3 rounded-lg border border-border border-l-[3px] bg-card/50 p-3 transition-colors",
-        style.border
-      )}
-    >
-      <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", style.icon)}>
-        <Icon className="h-4 w-4" />
+    <div className={cn("flex items-center gap-2.5 rounded-lg border border-border border-l-[3px] bg-card/50 px-2.5 py-2", s.border)}>
+      <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-md", s.icon)}>
+        <Icon className="h-3.5 w-3.5" />
       </div>
       <div className="min-w-0">
-        <div className={cn("text-lg font-bold leading-tight", style.value)}>
+        <div className={cn("text-base font-bold leading-tight tabular-nums", s.value)}>
           {displayValue ?? value}
         </div>
-        <div className="text-[11px] text-muted-foreground leading-tight">{label}</div>
+        <div className="text-[10px] text-muted-foreground leading-tight">{label}</div>
       </div>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* Quick Stat Pill                                                     */
+/* Stat Pill                                                           */
 /* ------------------------------------------------------------------ */
 
 function StatPill({
@@ -394,7 +329,7 @@ function StatPill({
   color: string;
 }) {
   return (
-    <div className="flex items-center gap-1.5 rounded-full border border-border bg-card/50 px-3 py-1.5 text-xs">
+    <div className="flex items-center gap-1.5 rounded-full border border-border bg-card/50 px-2.5 py-1 text-[11px]">
       <Icon className={cn("h-3 w-3", color)} />
       <span className="text-muted-foreground">{label}</span>
     </div>
@@ -402,30 +337,28 @@ function StatPill({
 }
 
 /* ------------------------------------------------------------------ */
-/* Score Info Button                                                    */
+/* Score Info Popover                                                   */
 /* ------------------------------------------------------------------ */
 
 function ScoreInfoButton() {
   const [open, setOpen] = useState(false);
-
   return (
     <div className="absolute -top-1 -right-1">
       <button
         onClick={() => setOpen(!open)}
-        className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-        aria-label="How is this score calculated?"
+        className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+        aria-label="Score info"
       >
-        <Info className="h-3.5 w-3.5" />
+        <Info className="h-3 w-3" />
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-8 z-50 w-64 rounded-lg border border-border bg-popover p-3 shadow-lg text-xs text-popover-foreground">
+          <div className="absolute right-0 top-7 z-50 w-56 rounded-md border border-border bg-popover p-2.5 shadow-lg text-[11px] text-popover-foreground">
             <p className="font-medium mb-1">How is this calculated?</p>
             <p className="text-muted-foreground leading-relaxed">
-              Your compliance score is based on regulation coverage across your
-              tracked jurisdictions, findings from your most recent audit, and the
-              ratio of enacted regulations you&apos;re subject to. It updates daily.
+              Based on regulation coverage, audit findings, and enacted regulation
+              ratio across your tracked jurisdictions. Updates daily.
             </p>
           </div>
         </>

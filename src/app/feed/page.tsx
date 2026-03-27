@@ -1,9 +1,5 @@
-import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { RegulationCard } from "@/components/feed/RegulationCard";
-import { FeedFilters } from "@/components/feed/FeedFilters";
-import { UpdateTimeline } from "@/components/feed/UpdateTimeline";
-import { Separator } from "@/components/ui/separator";
+import { FeedClient } from "@/components/feed/FeedClient";
 import { computeVelocityScores } from "@/lib/utils/velocity";
 import type { Regulation, RegulatoryUpdate } from "@/lib/types/regulation";
 
@@ -82,67 +78,13 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
     ]);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">
-          Regulatory Intelligence Feed
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Tracking {total} AI regulations across global jurisdictions
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_300px] gap-6">
-        {/* Filters sidebar */}
-        <aside className="space-y-4">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Filters
-          </h2>
-          <Suspense fallback={null}>
-            <FeedFilters />
-          </Suspense>
-        </aside>
-
-        {/* Main feed */}
-        <div className="space-y-4">
-          {regulations.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <p className="text-lg font-medium">No regulations found</p>
-              <p className="text-sm mt-1">
-                Try adjusting your filters or search terms.
-              </p>
-            </div>
-          ) : (
-            <>
-              {regulations.map((reg) => (
-                <RegulationCard
-                  key={reg.id}
-                  regulation={reg}
-                  velocity={velocityScores[reg.jurisdiction]}
-                />
-              ))}
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 pt-4">
-                  <span className="text-sm text-muted-foreground">
-                    Page {page} of {totalPages}
-                  </span>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Updates timeline sidebar */}
-        <aside className="space-y-4">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Recent Updates
-          </h2>
-          <Separator />
-          <UpdateTimeline updates={updates} />
-        </aside>
-      </div>
-    </div>
+    <FeedClient
+      regulations={regulations}
+      total={total}
+      page={page}
+      totalPages={totalPages}
+      updates={updates}
+      velocityScores={velocityScores}
+    />
   );
 }
