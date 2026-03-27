@@ -10,6 +10,7 @@ export interface JurisdictionData {
   score: number;
   regulationCount: number;
   velocity: "high" | "medium" | "low";
+  velocityScore?: number;
   status: "compliant" | "at_risk" | "non_compliant";
 }
 
@@ -56,7 +57,7 @@ export function JurisdictionCard({ data }: JurisdictionCardProps) {
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground">Velocity</span>
               <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", vel.color)}>
-                {vel.label}
+                {vel.label}{data.velocityScore != null ? ` (${data.velocityScore})` : ""}
               </span>
             </div>
             <div className="flex items-center justify-between text-xs">

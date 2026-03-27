@@ -4,6 +4,7 @@ import { RegulationCard } from "@/components/feed/RegulationCard";
 import { FeedFilters } from "@/components/feed/FeedFilters";
 import { UpdateTimeline } from "@/components/feed/UpdateTimeline";
 import { Separator } from "@/components/ui/separator";
+import { computeVelocityScores } from "@/lib/utils/velocity";
 import type { Regulation, RegulatoryUpdate } from "@/lib/types/regulation";
 
 interface FeedPageProps {
@@ -72,9 +73,13 @@ async function getRecentUpdates() {
 
 export default async function FeedPage({ searchParams }: FeedPageProps) {
   const params = await searchParams;
-  const [{ regulations, total, page, totalPages }, updates] = await Promise.all(
-    [getRegulations(params), getRecentUpdates()]
-  );
+  const supabase = createAdminClient();
+  const [{ regulations, total, page, totalPages }, updates, velocityScores] =
+    await Promise.all([
+      getRegulations(params),
+      getRecentUpdates(),
+      computeVelocityScores(supabase),
+    ]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -110,7 +115,11 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
           ) : (
             <>
               {regulations.map((reg) => (
-                <RegulationCard key={reg.id} regulation={reg} />
+                <RegulationCard
+                  key={reg.id}
+                  regulation={reg}
+                  velocity={velocityScores[reg.jurisdiction]}
+                />
               ))}
 
               {/* Pagination */}

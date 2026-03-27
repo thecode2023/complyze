@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createServerComponentClient } from "@/lib/supabase/server";
 import { DashboardClient } from "./DashboardClient";
+import { computeVelocityScores } from "@/lib/utils/velocity";
 
 export default async function DashboardPage() {
   const supabase = await createServerComponentClient();
@@ -74,6 +75,9 @@ export default async function DashboardPage() {
     0
   );
 
+  // Compute velocity scores
+  const velocityScores = await computeVelocityScores(supabase);
+
   return (
     <DashboardClient
       profile={profile}
@@ -83,6 +87,7 @@ export default async function DashboardPage() {
       regCounts={regCounts}
       trackedRegCount={trackedRegCount}
       unreadCount={unreadCount ?? 0}
+      velocityScores={velocityScores}
     />
   );
 }

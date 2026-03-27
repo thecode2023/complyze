@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     // Get existing regulation titles for dedup and update matching
     const { data: existingRegs } = await supabase
       .from("regulations")
-      .select("id, title");
+      .select("id, title, jurisdiction, status");
 
     const existingTitles = (existingRegs || []).map((r) => r.title);
     const existingTitleSet = new Set(
@@ -59,6 +59,67 @@ export async function POST(request: NextRequest) {
     let totalCreated = 0;
     let totalUpdated = 0;
     let totalSkipped = 0;
+    let totalAlerts = 0;
+
+    // Helper: generate alerts for affected users when a regulation is created/updated
+    async function generateAlerts(
+      regulationId: string,
+      jurisdiction: string,
+      regulationStatus: string,
+      updateType: string,
+      title: string,
+      summary: string
+    ) {
+      // Find users whose jurisdictions overlap with this regulation's jurisdiction
+      const { data: affectedUsers } = await supabase
+        .from("user_profiles")
+        .select("id")
+        .filter("jurisdictions", "cs", `{${jurisdiction}}`);
+
+      if (!affectedUsers || affectedUsers.length === 0) return;
+
+      // Determine severity based on regulation status and update type
+      let severity: "critical" | "high" | "medium" | "low" = "medium";
+      if (updateType === "enforcement_action") {
+        severity = "critical";
+      } else if (
+        updateType === "new_regulation" &&
+        (regulationStatus === "enacted" || regulationStatus === "in_effect")
+      ) {
+        severity = "high";
+      } else if (updateType === "amendment" || updateType === "status_change") {
+        severity = "high";
+      } else if (updateType === "guidance_update") {
+        severity = "low";
+      }
+
+      // Determine alert_type from update_type (must match DB constraint)
+      const alertType =
+        updateType === "new_regulation"
+          ? "new_regulation"
+          : updateType === "enforcement_action"
+            ? "enforcement_action"
+            : "regulation_changed";
+
+      const alertRows = affectedUsers.map((u) => ({
+        user_id: u.id,
+        regulation_id: regulationId,
+        alert_type: alertType,
+        severity,
+        title,
+        summary,
+        read: false,
+        dismissed: false,
+      }));
+
+      const { error: alertError } = await supabase
+        .from("compliance_alerts")
+        .insert(alertRows);
+
+      if (!alertError) {
+        totalAlerts += alertRows.length;
+      }
+    }
 
     for (const item of feedItems) {
       if (apiCallCount >= MAX_API_CALLS) {
@@ -101,6 +162,17 @@ export async function POST(request: NextRequest) {
                 raw_source_text: item.contentSnippet,
                 detected_at: new Date().toISOString(),
               });
+
+              // Generate alerts for affected users
+              await generateAlerts(
+                matchingReg.id,
+                matchingReg.jurisdiction,
+                matchingReg.status,
+                update.update_type,
+                update.title,
+                update.summary
+              );
+
               totalUpdated++;
             } else if (update.update_type === "new_regulation") {
               // Classify as new regulation
@@ -124,22 +196,37 @@ export async function POST(request: NextRequest) {
                 classified.confidence > 0.3 &&
                 !existingTitleSet.has(classified.title.toLowerCase())
               ) {
-                await supabase.from("regulations").insert({
-                  title: classified.title,
-                  jurisdiction: classified.jurisdiction,
-                  jurisdiction_display: classified.jurisdiction_display,
-                  status: classified.status,
-                  category: classified.category,
-                  summary: classified.summary,
-                  key_requirements: classified.key_requirements,
-                  compliance_implications: classified.compliance_implications,
-                  effective_date: classified.effective_date,
-                  source_url: classified.source_url,
-                  source_name: classified.source_name,
-                  ai_classified: true,
-                  ai_confidence: classified.confidence,
-                  last_verified_at: new Date().toISOString(),
-                });
+                const { data: newReg } = await supabase
+                  .from("regulations")
+                  .insert({
+                    title: classified.title,
+                    jurisdiction: classified.jurisdiction,
+                    jurisdiction_display: classified.jurisdiction_display,
+                    status: classified.status,
+                    category: classified.category,
+                    summary: classified.summary,
+                    key_requirements: classified.key_requirements,
+                    compliance_implications: classified.compliance_implications,
+                    effective_date: classified.effective_date,
+                    source_url: classified.source_url,
+                    source_name: classified.source_name,
+                    ai_classified: true,
+                    ai_confidence: classified.confidence,
+                    last_verified_at: new Date().toISOString(),
+                  })
+                  .select("id")
+                  .single();
+
+                if (newReg) {
+                  await generateAlerts(
+                    newReg.id,
+                    classified.jurisdiction,
+                    classified.status,
+                    "new_regulation",
+                    classified.title,
+                    classified.summary
+                  );
+                }
 
                 existingTitleSet.add(classified.title.toLowerCase());
                 totalCreated++;
@@ -176,6 +263,7 @@ export async function POST(request: NextRequest) {
       regulations_created: totalCreated,
       updates_recorded: totalUpdated,
       items_skipped: totalSkipped,
+      alerts_generated: totalAlerts,
     });
   } catch (error) {
     const errorMsg =

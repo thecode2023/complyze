@@ -1,8 +1,10 @@
-import { ExternalLink, Clock, CalendarDays } from "lucide-react";
+import { ExternalLink, Clock, CalendarDays, Activity } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow, format } from "date-fns";
+import { cn } from "@/lib/utils";
 import type { Regulation } from "@/lib/types/regulation";
+import type { VelocityResult } from "@/lib/utils/velocity";
 
 const statusColors: Record<string, string> = {
   enacted: "bg-green-500/15 text-green-400 border-green-500/30",
@@ -20,7 +22,19 @@ const categoryLabels: Record<string, string> = {
   standard: "Standard",
 };
 
-export function RegulationCard({ regulation }: { regulation: Regulation }) {
+const velocityColors = {
+  high: "text-red-400 bg-red-500/15 border-red-500/30",
+  medium: "text-amber-400 bg-amber-500/15 border-amber-500/30",
+  low: "text-emerald-400 bg-emerald-500/15 border-emerald-500/30",
+};
+
+export function RegulationCard({
+  regulation,
+  velocity,
+}: {
+  regulation: Regulation;
+  velocity?: VelocityResult;
+}) {
   const statusColor = statusColors[regulation.status] || "";
 
   return (
@@ -41,6 +55,19 @@ export function RegulationCard({ regulation }: { regulation: Regulation }) {
           <Badge variant="secondary" className="text-xs">
             {categoryLabels[regulation.category] || regulation.category}
           </Badge>
+          {velocity && (
+            <Badge
+              variant="outline"
+              className={cn("text-xs gap-1", velocityColors[velocity.level])}
+            >
+              <Activity className="h-2.5 w-2.5" />
+              {velocity.level === "high"
+                ? "High Velocity"
+                : velocity.level === "medium"
+                  ? "Med Velocity"
+                  : "Low Velocity"}
+            </Badge>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

@@ -20,8 +20,10 @@ import { ComplianceGauge } from "@/components/dashboard/ComplianceGauge";
 import { ComplianceTrend, type PostureSnapshot } from "@/components/dashboard/ComplianceTrend";
 import { JurisdictionCard, type JurisdictionData } from "@/components/dashboard/JurisdictionCard";
 import { AlertsFeed, type ComplianceAlert, type WeeklyDigest } from "@/components/dashboard/AlertsFeed";
+import { ProfileEditor } from "@/components/dashboard/ProfileEditor";
 import { JURISDICTION_OPTIONS } from "@/lib/types/user";
 import type { UserProfile } from "@/lib/types/user";
+import type { VelocityMap } from "@/lib/utils/velocity";
 
 interface DashboardClientProps {
   profile: UserProfile;
@@ -31,6 +33,7 @@ interface DashboardClientProps {
   regCounts: Record<string, number>;
   trackedRegCount: number;
   unreadCount: number;
+  velocityScores: VelocityMap;
 }
 
 export function DashboardClient({
@@ -41,8 +44,10 @@ export function DashboardClient({
   regCounts,
   trackedRegCount,
   unreadCount,
+  velocityScores,
 }: DashboardClientProps) {
   const router = useRouter();
+  const [profileEditorOpen, setProfileEditorOpen] = useState(false);
 
   // Derive overall score from latest snapshot, or a default
   const latestSnapshot = snapshots[0];
@@ -59,12 +64,11 @@ export function DashboardClient({
   const jurisdictionData: JurisdictionData[] = profile.jurisdictions.map((code) => {
     const score = jurisdictionScores[code] ?? 60;
     const regCount = regCounts[code] ?? 0;
-    // Derive velocity from regulation count heuristic (will be replaced by real velocity in Step 3.7)
-    const velocity: "high" | "medium" | "low" =
-      regCount >= 3 ? "high" : regCount >= 1 ? "medium" : "low";
+    const velocity: "high" | "medium" | "low" = velocityScores[code]?.level ?? "low";
+    const velocityScore = velocityScores[code]?.score ?? 0;
     const status: "compliant" | "at_risk" | "non_compliant" =
       score > 70 ? "compliant" : score > 40 ? "at_risk" : "non_compliant";
-    return { code, score, regulationCount: regCount, velocity, status };
+    return { code, score, regulationCount: regCount, velocity, velocityScore, status };
   });
 
   function handleAlertUpdate() {
@@ -161,14 +165,19 @@ export function DashboardClient({
               Browse Regulations
             </a>
           </Button>
-          <Button variant="outline" asChild>
-            <a href="/dashboard/onboarding">
-              <UserCog className="mr-2 h-4 w-4" />
-              Edit Profile
-            </a>
+          <Button variant="outline" onClick={() => setProfileEditorOpen(true)}>
+            <UserCog className="mr-2 h-4 w-4" />
+            Edit Profile
           </Button>
         </div>
       </div>
+
+      {/* Profile Editor Sheet */}
+      <ProfileEditor
+        profile={profile}
+        open={profileEditorOpen}
+        onOpenChange={setProfileEditorOpen}
+      />
     </div>
   );
 }
