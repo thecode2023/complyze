@@ -1,8 +1,22 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, memo } from "react";
 import { useRouter } from "next/navigation";
-import { backgroundLand, jurisdictionShapes } from "./map-paths";
+import {
+  ComposableMap,
+  Geographies,
+  Geography,
+  Marker,
+} from "react-simple-maps";
+
+/* ------------------------------------------------------------------ */
+/* Constants                                                           */
+/* ------------------------------------------------------------------ */
+
+const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+
+const DARK_FILL = "#141922";
+const DARK_STROKE = "#1e2533";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -24,35 +38,74 @@ interface WorldMapProps {
 }
 
 /* ------------------------------------------------------------------ */
-/* Velocity color palette                                              */
+/* ISO 3166-1 numeric → jurisdiction code mapping                      */
 /* ------------------------------------------------------------------ */
 
-const DARK_FILL = "#141922";         // no-data land
-const DARK_STROKE = "#1e2533";       // country outlines
-const BG = "#0b0f15";               // ocean / background
+// EU 27 member states
+const EU_CODES = new Set([
+  "040", "056", "100", "191", "196", "203", "208", "233", "246", "250",
+  "276", "300", "348", "372", "380", "428", "440", "442", "470", "528",
+  "616", "620", "642", "703", "705", "724", "752",
+]);
 
-const velocity = {
-  high: {
-    fill: "#7f1d1d",           // dark red fill
-    fillTracked: "#991b1b",    // brighter red for tracked
-    stroke: "#dc2626",
-    glow: "#ef4444",
-    pin: "#ef4444",
-  },
-  medium: {
-    fill: "#78350f",           // dark amber fill
-    fillTracked: "#92400e",    // brighter amber for tracked
-    stroke: "#d97706",
-    glow: "#f59e0b",
-    pin: "#f59e0b",
-  },
-  low: {
-    fill: "#064e3b",           // dark emerald fill
-    fillTracked: "#065f46",    // brighter emerald for tracked
-    stroke: "#059669",
-    glow: "#10b981",
-    pin: "#10b981",
-  },
+function isoToJurisdiction(isoNumeric: string): string | null {
+  if (EU_CODES.has(isoNumeric)) return "EU";
+  switch (isoNumeric) {
+    case "840": return "US";
+    case "124": return "CA";
+    case "826": return "GB";
+    case "076": return "BR";
+    case "702": return "SG";
+    case "360": return "ID";
+    default: return null;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Pin marker locations [longitude, latitude]                          */
+/* ------------------------------------------------------------------ */
+
+const PIN_LOCATIONS: Record<string, { coords: [number, number]; label: string }> = {
+  EU:      { coords: [9.7, 50.1],     label: "EU" },
+  US:      { coords: [-98.5, 39.8],   label: "US" },
+  "US-TX": { coords: [-100.0, 31.0],  label: "TX" },
+  "US-CO": { coords: [-105.5, 39.0],  label: "CO" },
+  "US-CA": { coords: [-119.4, 36.8],  label: "CA" },
+  "US-IL": { coords: [-89.0, 40.0],   label: "IL" },
+  CA:      { coords: [-106.3, 56.1],  label: "CA" },
+  GB:      { coords: [-3.4, 55.4],    label: "UK" },
+  BR:      { coords: [-51.9, -14.2],  label: "BR" },
+  SG:      { coords: [103.8, 1.35],   label: "SG" },
+  ID:      { coords: [113.9, -0.8],   label: "ID" },
+  INTL:    { coords: [2.3, 48.9],     label: "OECD" },
+};
+
+/* ------------------------------------------------------------------ */
+/* Velocity colors                                                     */
+/* ------------------------------------------------------------------ */
+
+const VELOCITY_FILL = {
+  high:   { tracked: "rgba(239,68,68,0.5)",  untracked: "rgba(239,68,68,0.25)"  },
+  medium: { tracked: "rgba(245,158,11,0.5)", untracked: "rgba(245,158,11,0.25)" },
+  low:    { tracked: "rgba(16,185,129,0.5)", untracked: "rgba(16,185,129,0.25)" },
+};
+
+const VELOCITY_STROKE = {
+  high:   { tracked: "rgba(239,68,68,0.6)",  untracked: "rgba(239,68,68,0.3)"  },
+  medium: { tracked: "rgba(245,158,11,0.6)", untracked: "rgba(245,158,11,0.3)" },
+  low:    { tracked: "rgba(16,185,129,0.6)", untracked: "rgba(16,185,129,0.3)" },
+};
+
+const VELOCITY_PIN = {
+  high:   "#ef4444",
+  medium: "#f59e0b",
+  low:    "#10b981",
+};
+
+const VELOCITY_FILTER = {
+  high:   "url(#glR)",
+  medium: "url(#glA)",
+  low:    "url(#glG)",
 };
 
 /* ------------------------------------------------------------------ */
@@ -66,10 +119,10 @@ interface TooltipState {
 }
 
 /* ------------------------------------------------------------------ */
-/* Component                                                           */
+/* Main component                                                      */
 /* ------------------------------------------------------------------ */
 
-export function WorldMap({ jurisdictions }: WorldMapProps) {
+export const WorldMap = memo(function WorldMap({ jurisdictions }: WorldMapProps) {
   const router = useRouter();
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
@@ -78,43 +131,82 @@ export function WorldMap({ jurisdictions }: WorldMapProps) {
     [jurisdictions]
   );
 
+  // For each ISO country, find its jurisdiction data (if any)
+  const getCountryStyle = useCallback(
+    (isoNumeric: string) => {
+      const jCode = isoToJurisdiction(isoNumeric);
+      if (!jCode) return { fill: DARK_FILL, stroke: DARK_STROKE, strokeWidth: 0.5 };
+
+      const data = dataMap.get(jCode);
+      if (!data) return { fill: DARK_FILL, stroke: DARK_STROKE, strokeWidth: 0.5 };
+
+      const vf = VELOCITY_FILL[data.velocityLevel];
+      const vs = VELOCITY_STROKE[data.velocityLevel];
+
+      return {
+        fill: data.isTracked ? vf.tracked : vf.untracked,
+        stroke: data.isTracked ? vs.tracked : vs.untracked,
+        strokeWidth: data.isTracked ? 0.8 : 0.5,
+      };
+    },
+    [dataMap]
+  );
+
   const handleClick = useCallback(
     (code: string) => { router.push(`/feed?jurisdiction=${code}`); },
     [router]
   );
 
-  const handleMouse = useCallback(
-    (e: React.MouseEvent, code: string) => {
-      const data = dataMap.get(code);
-      if (!data) return;
-      const svg = (e.currentTarget as SVGElement).closest("svg");
-      if (!svg) return;
-      const rect = svg.getBoundingClientRect();
+  const handleGeoClick = useCallback(
+    (isoNumeric: string) => {
+      const jCode = isoToJurisdiction(isoNumeric);
+      if (jCode && dataMap.has(jCode)) handleClick(jCode);
+    },
+    [dataMap, handleClick]
+  );
+
+  const handleGeoHover = useCallback(
+    (e: React.MouseEvent, isoNumeric: string) => {
+      const jCode = isoToJurisdiction(isoNumeric);
+      if (!jCode) { setTooltip(null); return; }
+      const data = dataMap.get(jCode);
+      if (!data) { setTooltip(null); return; }
+      const rect = (e.currentTarget as Element).closest(".rsm-svg, svg")?.getBoundingClientRect();
+      if (!rect) return;
       setTooltip({ x: e.clientX - rect.left, y: e.clientY - rect.top, data });
     },
     [dataMap]
   );
 
-  const clearTooltip = useCallback(() => setTooltip(null), []);
+  const handlePinHover = useCallback(
+    (e: React.MouseEvent, code: string) => {
+      const data = dataMap.get(code);
+      if (!data) return;
+      const rect = (e.currentTarget as Element).closest("svg")?.getBoundingClientRect();
+      if (!rect) return;
+      setTooltip({ x: e.clientX - rect.left, y: e.clientY - rect.top, data });
+    },
+    [dataMap]
+  );
 
   return (
     <div className="hidden md:block rounded-lg border border-border overflow-hidden relative">
       {/* Dark ocean background */}
-      <div className="absolute inset-0" style={{ backgroundColor: BG }} />
-      <div className="absolute inset-0 bg-gradient-to-b from-cyan-950/8 via-transparent to-cyan-950/5" />
+      <div className="absolute inset-0 bg-[#0b0f15]" />
+      <div className="absolute inset-0 bg-gradient-to-b from-cyan-950/[0.08] via-transparent to-cyan-950/[0.04]" />
 
-      {/* Scanline effect */}
+      {/* Scanline */}
       <div
-        className="absolute inset-0 pointer-events-none opacity-[0.02]"
+        className="absolute inset-0 pointer-events-none opacity-[0.015]"
         style={{
           backgroundImage:
-            "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,0.04) 3px, rgba(255,255,255,0.04) 4px)",
+            "repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,0.04) 3px,rgba(255,255,255,0.04) 4px)",
         }}
       />
 
-      <div className="relative p-4">
+      <div className="relative px-4 pt-4 pb-2">
         {/* Header */}
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <div className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
             <h3 className="text-[10px] font-semibold text-cyan-400/80 uppercase tracking-[0.2em]">
@@ -122,223 +214,163 @@ export function WorldMap({ jurisdictions }: WorldMapProps) {
             </h3>
           </div>
           <div className="flex items-center gap-4 text-[9px] text-slate-500">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.6)]" />
-              High
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.6)]" />
-              Medium
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
-              Low
-            </span>
+            <LegendDot color="#ef4444" label="High" />
+            <LegendDot color="#f59e0b" label="Medium" />
+            <LegendDot color="#10b981" label="Low" />
           </div>
         </div>
 
-        {/* SVG Map */}
-        <div className="relative">
-          <svg viewBox="0 0 1000 500" className="w-full h-auto" style={{ maxHeight: "340px" }}>
+        {/* Map container */}
+        <div className="relative" onMouseLeave={() => setTooltip(null)}>
+          {/* HUD corner brackets — overlaid via absolute positioning */}
+          <div className="absolute top-0 left-0 w-3 h-3 border-l border-t border-cyan-500/10 pointer-events-none z-10" />
+          <div className="absolute top-0 right-0 w-3 h-3 border-r border-t border-cyan-500/10 pointer-events-none z-10" />
+          <div className="absolute bottom-0 left-0 w-3 h-3 border-l border-b border-cyan-500/10 pointer-events-none z-10" />
+          <div className="absolute bottom-0 right-0 w-3 h-3 border-r border-b border-cyan-500/10 pointer-events-none z-10" />
+
+          <ComposableMap
+            projection="geoMercator"
+            projectionConfig={{ scale: 130, center: [20, 20] }}
+            width={900}
+            height={440}
+            style={{ width: "100%", height: "auto" }}
+          >
+            {/* SVG defs for glow filters */}
             <defs>
-              {/* Glow filters for pin markers */}
               <filter id="glR" x="-100%" y="-100%" width="300%" height="300%">
-                <feGaussianBlur stdDeviation="3" result="b" />
+                <feGaussianBlur stdDeviation="3" />
                 <feFlood floodColor="#ef4444" floodOpacity="0.7" result="c" />
-                <feComposite in="c" in2="b" operator="in" result="g" />
+                <feComposite in="c" in2="SourceGraphic" operator="in" result="g" />
                 <feMerge><feMergeNode in="g" /><feMergeNode in="SourceGraphic" /></feMerge>
               </filter>
               <filter id="glA" x="-100%" y="-100%" width="300%" height="300%">
-                <feGaussianBlur stdDeviation="3" result="b" />
+                <feGaussianBlur stdDeviation="3" />
                 <feFlood floodColor="#f59e0b" floodOpacity="0.7" result="c" />
-                <feComposite in="c" in2="b" operator="in" result="g" />
+                <feComposite in="c" in2="SourceGraphic" operator="in" result="g" />
                 <feMerge><feMergeNode in="g" /><feMergeNode in="SourceGraphic" /></feMerge>
               </filter>
               <filter id="glG" x="-100%" y="-100%" width="300%" height="300%">
-                <feGaussianBlur stdDeviation="3" result="b" />
+                <feGaussianBlur stdDeviation="3" />
                 <feFlood floodColor="#10b981" floodOpacity="0.7" result="c" />
-                <feComposite in="c" in2="b" operator="in" result="g" />
+                <feComposite in="c" in2="SourceGraphic" operator="in" result="g" />
                 <feMerge><feMergeNode in="g" /><feMergeNode in="SourceGraphic" /></feMerge>
               </filter>
-
-              {/* Subtle grid */}
-              <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
-                <path d="M50 0L0 0 0 50" fill="none" stroke="rgba(34,211,238,0.025)" strokeWidth="0.5" />
-              </pattern>
             </defs>
 
-            {/* Grid overlay */}
-            <rect width="1000" height="500" fill="url(#grid)" />
+            {/* World countries */}
+            <Geographies geography={GEO_URL}>
+              {({ geographies }) =>
+                geographies.map((geo) => {
+                  const iso = geo.id;
+                  const style = getCountryStyle(iso);
+                  const jCode = isoToJurisdiction(iso);
+                  const hasData = jCode && dataMap.has(jCode);
 
-            {/* Lat/lon reference lines */}
-            {[100, 167, 250, 333, 400].map((y) => (
-              <line key={`la${y}`} x1="0" y1={y} x2="1000" y2={y}
-                stroke="rgba(34,211,238,0.02)" strokeWidth="0.5" strokeDasharray="4 12" />
-            ))}
-            {[167, 333, 500, 667, 833].map((x) => (
-              <line key={`lo${x}`} x1={x} y1="0" x2={x} y2="500"
-                stroke="rgba(34,211,238,0.02)" strokeWidth="0.5" strokeDasharray="4 12" />
-            ))}
-
-            {/* ====================================================== */}
-            {/* Layer 1: Background landmasses (no regulation data)     */}
-            {/* ====================================================== */}
-            {backgroundLand.map((d, i) => (
-              <path key={`bg${i}`} d={d} fill={DARK_FILL} stroke={DARK_STROKE} strokeWidth="0.5" />
-            ))}
-
-            {/* ====================================================== */}
-            {/* Layer 2: Jurisdiction regions — velocity-colored fills  */}
-            {/* ====================================================== */}
-            {jurisdictionShapes.map((shape) => {
-              if (shape.paths.length === 0) return null; // OECD — no fill
-              const data = dataMap.get(shape.code);
-              if (!data) {
-                // Has shape data but no jurisdiction data — render dark
-                return shape.paths.map((d, i) => (
-                  <path key={`${shape.code}-${i}`} d={d} fill={DARK_FILL} stroke={DARK_STROKE} strokeWidth="0.5" />
-                ));
+                  return (
+                    <Geography
+                      key={geo.rsmKey}
+                      geography={geo}
+                      fill={style.fill}
+                      stroke={style.stroke}
+                      strokeWidth={style.strokeWidth}
+                      style={{
+                        default: { outline: "none" },
+                        hover: {
+                          outline: "none",
+                          fill: hasData ? undefined : DARK_FILL,
+                          filter: hasData ? "brightness(1.3)" : undefined,
+                          cursor: hasData ? "pointer" : "default",
+                        },
+                        pressed: { outline: "none" },
+                      }}
+                      onClick={() => handleGeoClick(iso)}
+                      onMouseMove={(e: React.MouseEvent) => handleGeoHover(e, iso)}
+                    />
+                  );
+                })
               }
+            </Geographies>
 
-              const v = velocity[data.velocityLevel];
-              const fill = data.isTracked ? v.fillTracked : v.fill;
-              const stroke = v.stroke;
+            {/* Pin markers for each jurisdiction */}
+            {Object.entries(PIN_LOCATIONS).map(([code, { coords, label }]) => {
+              const data = dataMap.get(code);
+              if (!data) return null;
 
-              return shape.paths.map((d, i) => (
-                <path
-                  key={`${shape.code}-${i}`}
-                  d={d}
-                  fill={fill}
-                  stroke={stroke}
-                  strokeWidth={data.isTracked ? "1" : "0.5"}
-                  strokeOpacity={data.isTracked ? 0.6 : 0.3}
-                  className="cursor-pointer transition-colors duration-300 hover:brightness-125"
-                  onClick={() => handleClick(shape.code)}
-                  onMouseMove={(e) => handleMouse(e, shape.code)}
-                  onMouseLeave={clearTooltip}
-                />
-              ));
-            })}
-
-            {/* ====================================================== */}
-            {/* Layer 3: OECD dashed orbit                              */}
-            {/* ====================================================== */}
-            {dataMap.has("INTL") && (
-              <ellipse
-                cx="500" cy="250" rx="440" ry="200"
-                fill="none" stroke="rgba(34,211,238,0.04)" strokeWidth="0.5" strokeDasharray="3 9"
-              />
-            )}
-
-            {/* ====================================================== */}
-            {/* Layer 4: Pin markers + pulse animations                 */}
-            {/* ====================================================== */}
-            {jurisdictionShapes.map((shape) => {
-              const data = dataMap.get(shape.code);
-              if (!data || shape.code === "INTL") return null;
-
-              const v = velocity[data.velocityLevel];
-              const { x, y } = shape.pin;
-              const tracked = data.isTracked;
-              const r = tracked ? 4 : 2;
-              const glowFilter = data.velocityLevel === "high" ? "url(#glR)"
-                : data.velocityLevel === "medium" ? "url(#glA)" : "url(#glG)";
+              const pinColor = VELOCITY_PIN[data.velocityLevel];
+              const filterUrl = VELOCITY_FILTER[data.velocityLevel];
+              const isTracked = data.isTracked;
+              const r = isTracked ? 4 : 2;
 
               return (
-                <g key={`pin-${shape.code}`}>
-                  {/* Radar pulse for recent updates */}
-                  {data.hasRecentUpdate && tracked && (
+                <Marker
+                  key={code}
+                  coordinates={coords}
+                  onClick={() => handleClick(code)}
+                  onMouseMove={(e: React.MouseEvent) => handlePinHover(e, code)}
+                  onMouseLeave={() => setTooltip(null)}
+                >
+                  {/* Radar pulse rings for recent updates */}
+                  {data.hasRecentUpdate && isTracked && (
                     <>
-                      <circle cx={x} cy={y} r="5" fill="none" stroke={v.glow} strokeWidth="1">
-                        <animate attributeName="r" from="5" to="22" dur="2.5s" repeatCount="indefinite" />
+                      <circle r="5" fill="none" stroke={pinColor} strokeWidth="1">
+                        <animate attributeName="r" from="5" to="20" dur="2.5s" repeatCount="indefinite" />
                         <animate attributeName="opacity" from="0.6" to="0" dur="2.5s" repeatCount="indefinite" />
                       </circle>
-                      <circle cx={x} cy={y} r="5" fill="none" stroke={v.glow} strokeWidth="0.5">
-                        <animate attributeName="r" from="5" to="22" dur="2.5s" begin="0.8s" repeatCount="indefinite" />
+                      <circle r="5" fill="none" stroke={pinColor} strokeWidth="0.6">
+                        <animate attributeName="r" from="5" to="20" dur="2.5s" begin="0.8s" repeatCount="indefinite" />
                         <animate attributeName="opacity" from="0.4" to="0" dur="2.5s" begin="0.8s" repeatCount="indefinite" />
                       </circle>
-                      <circle cx={x} cy={y} r="5" fill="none" stroke={v.glow} strokeWidth="0.3">
-                        <animate attributeName="r" from="5" to="22" dur="2.5s" begin="1.6s" repeatCount="indefinite" />
-                        <animate attributeName="opacity" from="0.25" to="0" dur="2.5s" begin="1.6s" repeatCount="indefinite" />
+                      <circle r="5" fill="none" stroke={pinColor} strokeWidth="0.3">
+                        <animate attributeName="r" from="5" to="20" dur="2.5s" begin="1.6s" repeatCount="indefinite" />
+                        <animate attributeName="opacity" from="0.2" to="0" dur="2.5s" begin="1.6s" repeatCount="indefinite" />
                       </circle>
                     </>
                   )}
 
-                  {/* Ambient glow halo */}
-                  {tracked && (
-                    <circle cx={x} cy={y} r={r + 6} fill={v.glow} opacity="0.08" className="pointer-events-none" />
+                  {/* Ambient halo */}
+                  {isTracked && (
+                    <circle r={r + 5} fill={pinColor} opacity={0.1} />
                   )}
 
-                  {/* Pin dot */}
+                  {/* Core pin */}
                   <circle
-                    cx={x} cy={y} r={r}
-                    fill={v.pin}
-                    opacity={tracked ? 1 : 0.35}
-                    filter={tracked ? glowFilter : undefined}
-                    className="cursor-pointer"
-                    onClick={() => handleClick(shape.code)}
-                    onMouseMove={(e) => handleMouse(e, shape.code)}
-                    onMouseLeave={clearTooltip}
+                    r={r}
+                    fill={pinColor}
+                    opacity={isTracked ? 1 : 0.35}
+                    filter={isTracked ? filterUrl : undefined}
+                    style={{ cursor: "pointer" }}
                   />
 
-                  {/* Bright center dot */}
-                  {tracked && (
-                    <circle cx={x} cy={y} r="1.2" fill="#fff" opacity="0.85" className="pointer-events-none" />
-                  )}
+                  {/* White center dot */}
+                  {isTracked && <circle r={1.2} fill="#fff" opacity={0.85} />}
 
                   {/* Label */}
-                  {tracked && (
+                  {isTracked && (
                     <text
-                      x={x} y={y - r - 5}
+                      y={-r - 5}
                       textAnchor="middle"
-                      fill={v.pin} fontSize="7" fontWeight="700" fontFamily="monospace"
-                      opacity="0.75" className="pointer-events-none select-none"
+                      fill={pinColor}
+                      fontSize={7}
+                      fontWeight={700}
+                      fontFamily="monospace"
+                      opacity={0.8}
+                      style={{ pointerEvents: "none", userSelect: "none" }}
                     >
-                      {shape.label}
+                      {label}
                     </text>
                   )}
-
-                  {/* Invisible hit area */}
-                  <circle
-                    cx={x} cy={y} r="14" fill="transparent" className="cursor-pointer"
-                    onClick={() => handleClick(shape.code)}
-                    onMouseMove={(e) => handleMouse(e, shape.code)}
-                    onMouseLeave={clearTooltip}
-                  />
-                </g>
+                </Marker>
               );
             })}
+          </ComposableMap>
 
-            {/* HUD corner brackets */}
-            <g stroke="rgba(34,211,238,0.1)" strokeWidth="1" fill="none">
-              <polyline points="3,14 3,3 14,3" />
-              <polyline points="986,14 986,3 975,3" />
-              <polyline points="3,486 3,497 14,497" />
-              <polyline points="986,486 986,497 975,497" />
-            </g>
-
-            {/* Status text */}
-            <text x="12" y="493" fill="rgba(34,211,238,0.18)" fontSize="8" fontFamily="monospace">
-              {jurisdictions.filter((j) => j.isTracked).length} TRACKED ·{" "}
-              {jurisdictions.filter((j) => j.hasRecentUpdate).length} ACTIVE ·{" "}
-              {jurisdictions.reduce((s, j) => s + j.regulationCount, 0)} REGS
-            </text>
-            {dataMap.has("INTL") && (
-              <text x="988" y="493" textAnchor="end" fill="rgba(34,211,238,0.12)" fontSize="7" fontFamily="monospace">
-                OECD/46
-              </text>
-            )}
-          </svg>
-
-          {/* ====================================================== */}
-          {/* Tooltip                                                  */}
-          {/* ====================================================== */}
+          {/* Tooltip */}
           {tooltip && (
             <div
               className="absolute z-50 pointer-events-none"
               style={{
-                left: Math.min(Math.max(tooltip.x - 80, 8), 780),
-                top: Math.max(tooltip.y - 112, 8),
+                left: Math.min(Math.max(tooltip.x - 80, 8), 700),
+                top: Math.max(tooltip.y - 115, 8),
               }}
             >
               <div className="rounded border border-cyan-900/50 bg-[#0c1017]/95 backdrop-blur-sm px-3 py-2.5 shadow-[0_0_24px_rgba(0,0,0,0.6)] min-w-[160px]">
@@ -346,21 +378,21 @@ export function WorldMap({ jurisdictions }: WorldMapProps) {
                   <span
                     className="h-2 w-2 rounded-full shrink-0"
                     style={{
-                      backgroundColor: velocity[tooltip.data.velocityLevel].pin,
-                      boxShadow: `0 0 8px ${velocity[tooltip.data.velocityLevel].glow}`,
+                      backgroundColor: VELOCITY_PIN[tooltip.data.velocityLevel],
+                      boxShadow: `0 0 8px ${VELOCITY_PIN[tooltip.data.velocityLevel]}`,
                     }}
                   />
                   <span className="text-xs font-semibold text-slate-200">{tooltip.data.name}</span>
                 </div>
                 <div className="space-y-0.5 text-[10px] font-mono">
-                  <Row label="REGS" value={String(tooltip.data.regulationCount)} />
+                  <TRow label="REGS" value={String(tooltip.data.regulationCount)} />
                   <div className="flex justify-between gap-6">
                     <span className="text-slate-500">VELOCITY</span>
-                    <span style={{ color: velocity[tooltip.data.velocityLevel].pin }}>
+                    <span style={{ color: VELOCITY_PIN[tooltip.data.velocityLevel] }}>
                       {tooltip.data.velocityLevel.toUpperCase()} ({tooltip.data.velocityScore})
                     </span>
                   </div>
-                  <Row label="STATUS" value={tooltip.data.complianceStatus.toUpperCase()} />
+                  <TRow label="STATUS" value={tooltip.data.complianceStatus.toUpperCase()} />
                   {tooltip.data.hasRecentUpdate && (
                     <div className="text-cyan-400 mt-1 text-[9px]">● RECENT ACTIVITY</div>
                   )}
@@ -372,12 +404,38 @@ export function WorldMap({ jurisdictions }: WorldMapProps) {
             </div>
           )}
         </div>
+
+        {/* Bottom status bar */}
+        <div className="flex items-center justify-between px-1 pt-1 text-[8px] font-mono text-cyan-500/20">
+          <span>
+            {jurisdictions.filter((j) => j.isTracked).length} TRACKED ·{" "}
+            {jurisdictions.filter((j) => j.hasRecentUpdate).length} ACTIVE ·{" "}
+            {jurisdictions.reduce((s, j) => s + j.regulationCount, 0)} REGS
+          </span>
+          {dataMap.has("INTL") && <span>OECD/46</span>}
+        </div>
       </div>
     </div>
   );
+});
+
+/* ------------------------------------------------------------------ */
+/* Small helper components                                             */
+/* ------------------------------------------------------------------ */
+
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span
+        className="h-2 w-2 rounded-full"
+        style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}99` }}
+      />
+      {label}
+    </span>
+  );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function TRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-6">
       <span className="text-slate-500">{label}</span>
