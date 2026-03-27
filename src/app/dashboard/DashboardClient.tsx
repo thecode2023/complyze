@@ -26,8 +26,15 @@ import {
   JurisdictionCommandCenter,
   type JurisdictionData,
 } from "@/components/dashboard/JurisdictionCard";
-import { WorldMap } from "@/components/dashboard/WorldMap";
+import dynamic from "next/dynamic";
 import { JURISDICTION_OPTIONS } from "@/lib/types/user";
+
+const WorldMap = dynamic(() => import("@/components/dashboard/WorldMap").then((m) => m.WorldMap), {
+  ssr: false,
+  loading: () => (
+    <div className="hidden md:block rounded-lg border border-border bg-[#0b0f15] h-[340px] animate-pulse" />
+  ),
+});
 import { AlertsFeed, type ComplianceAlert, type WeeklyDigest } from "@/components/dashboard/AlertsFeed";
 import { ProfileEditor } from "@/components/dashboard/ProfileEditor";
 import type { UserProfile, JurisdictionPriority } from "@/lib/types/user";
