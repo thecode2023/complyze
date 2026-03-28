@@ -132,9 +132,14 @@ export async function POST(request: NextRequest) {
 
       try {
         // First, check if this might be an update to an existing regulation
+        const itemTitle = String(item.title || "");
+        const itemSnippet = String(item.contentSnippet || "");
+        const itemLink = String(item.link || "");
+        const itemSource = String(item.source || "");
+
         const updatePrompt = buildExtractUpdatePrompt(
-          `${item.title}\n\n${item.contentSnippet}`,
-          item.link,
+          `${itemTitle}\n\n${itemSnippet}`,
+          itemLink,
           existingTitles
         );
 
@@ -144,22 +149,29 @@ export async function POST(request: NextRequest) {
 
         if (updateData?.is_relevant && updateData.updates?.length > 0) {
           for (const update of updateData.updates as ExtractedUpdate[]) {
+            // Safely coerce all fields to strings
+            const uTitle = String(update.title || "");
+            const uSummary = String(update.summary || "");
+            const uSourceUrl = String(update.source_url || item.link);
+            const uRegTitle = String(update.regulation_title || "");
+            const uType = String(update.update_type || "guidance_update");
+
             // Find matching regulation
             const matchingReg = (existingRegs || []).find(
               (r) =>
-                r.title.toLowerCase() === update.regulation_title.toLowerCase()
+                r.title.toLowerCase() === uRegTitle.toLowerCase()
             );
 
             if (matchingReg) {
               // Insert as regulatory update
               await supabase.from("regulatory_updates").insert({
                 regulation_id: matchingReg.id,
-                update_type: update.update_type,
-                title: update.title,
-                summary: update.summary,
-                source_url: update.source_url,
+                update_type: uType,
+                title: uTitle,
+                summary: uSummary,
+                source_url: uSourceUrl,
                 verified: false,
-                raw_source_text: item.contentSnippet,
+                raw_source_text: String(item.contentSnippet || ""),
                 detected_at: new Date().toISOString(),
               });
 
@@ -168,9 +180,9 @@ export async function POST(request: NextRequest) {
                 matchingReg.id,
                 matchingReg.jurisdiction,
                 matchingReg.status,
-                update.update_type,
-                update.title,
-                update.summary
+                uType,
+                uTitle,
+                uSummary
               );
 
               totalUpdated++;
@@ -179,9 +191,9 @@ export async function POST(request: NextRequest) {
               if (apiCallCount >= MAX_API_CALLS) break;
 
               const classifyPrompt = buildClassifyRegulationPrompt(
-                `${item.title}\n\n${item.contentSnippet}`,
-                item.link,
-                item.source
+                `${itemTitle}\n\n${itemSnippet}`,
+                itemLink,
+                itemSource
               );
 
               apiCallCount++;
@@ -191,25 +203,29 @@ export async function POST(request: NextRequest) {
                 classifyResponse
               ) as ClassifiedRegulation | null;
 
+              const cTitle = classified ? String(classified.title || "") : "";
+              const cSummary = classified ? String(classified.summary || "") : "";
+
               if (
                 classified &&
                 classified.confidence > 0.3 &&
-                !existingTitleSet.has(classified.title.toLowerCase())
+                cTitle &&
+                !existingTitleSet.has(cTitle.toLowerCase())
               ) {
                 const { data: newReg } = await supabase
                   .from("regulations")
                   .insert({
-                    title: classified.title,
-                    jurisdiction: classified.jurisdiction,
-                    jurisdiction_display: classified.jurisdiction_display,
+                    title: cTitle,
+                    jurisdiction: String(classified.jurisdiction || ""),
+                    jurisdiction_display: String(classified.jurisdiction_display || ""),
                     status: classified.status,
                     category: classified.category,
-                    summary: classified.summary,
-                    key_requirements: classified.key_requirements,
-                    compliance_implications: classified.compliance_implications,
-                    effective_date: classified.effective_date,
-                    source_url: classified.source_url,
-                    source_name: classified.source_name,
+                    summary: cSummary,
+                    key_requirements: Array.isArray(classified.key_requirements) ? classified.key_requirements.map(String) : [],
+                    compliance_implications: Array.isArray(classified.compliance_implications) ? classified.compliance_implications.map(String) : [],
+                    effective_date: classified.effective_date || null,
+                    source_url: String(classified.source_url || item.link),
+                    source_name: String(classified.source_name || item.source),
                     ai_classified: true,
                     ai_confidence: classified.confidence,
                     last_verified_at: new Date().toISOString(),
@@ -220,15 +236,15 @@ export async function POST(request: NextRequest) {
                 if (newReg) {
                   await generateAlerts(
                     newReg.id,
-                    classified.jurisdiction,
-                    classified.status,
+                    String(classified.jurisdiction || ""),
+                    String(classified.status || ""),
                     "new_regulation",
-                    classified.title,
-                    classified.summary
+                    cTitle,
+                    cSummary
                   );
                 }
 
-                existingTitleSet.add(classified.title.toLowerCase());
+                existingTitleSet.add(cTitle.toLowerCase());
                 totalCreated++;
               } else {
                 totalSkipped++;
@@ -240,9 +256,9 @@ export async function POST(request: NextRequest) {
         }
       } catch (itemError) {
         const errorMsg =
-          itemError instanceof Error ? itemError.message : "Unknown error";
-        await logEntry(item.source, "failure", {
-          error_message: `Failed processing "${item.title}": ${errorMsg}`,
+          itemError instanceof Error ? itemError.message : String(itemError);
+        await logEntry(String(item.source || "unknown"), "failure", {
+          error_message: `Failed processing "${String(item.title || "unknown")}": ${errorMsg}`,
         });
         totalSkipped++;
       }

@@ -43,10 +43,10 @@ export async function fetchRSSFeed(source: RSSSource): Promise<RSSFeedItem[]> {
   try {
     const feed = await parser.parseURL(source.url);
     return (feed.items || []).slice(0, 10).map((item) => ({
-      title: item.title || "Untitled",
-      link: item.link || "",
-      contentSnippet: item.contentSnippet || item.content || "",
-      pubDate: item.pubDate || new Date().toISOString(),
+      title: String(item.title || "Untitled"),
+      link: String(item.link || ""),
+      contentSnippet: String(item.contentSnippet || item.content || ""),
+      pubDate: String(item.pubDate || new Date().toISOString()),
       source: source.name,
     }));
   } catch (error) {
