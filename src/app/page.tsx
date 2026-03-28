@@ -8,7 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { UpdateTimeline } from "@/components/feed/UpdateTimeline";
 import type { RegulatoryUpdate } from "@/lib/types/regulation";
 
-export const revalidate = 300; // ISR: revalidate every 5 minutes
+export const dynamic = "force-dynamic";
 
 async function getStats() {
   const supabase = createAdminClient();

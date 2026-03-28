@@ -3,6 +3,8 @@ import { FeedClient } from "@/components/feed/FeedClient";
 import { computeVelocityScores } from "@/lib/utils/velocity";
 import type { Regulation, RegulatoryUpdate } from "@/lib/types/regulation";
 
+export const dynamic = "force-dynamic";
+
 interface FeedPageProps {
   searchParams: Promise<{
     jurisdiction?: string;
@@ -67,15 +69,40 @@ async function getRecentUpdates() {
   return (data || []) as RegulatoryUpdate[];
 }
 
+async function getDistinctJurisdictions() {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("regulations")
+    .select("jurisdiction, jurisdiction_display");
+
+  if (!data) return [];
+
+  const seen = new Map<string, string>();
+  for (const r of data) {
+    if (!seen.has(r.jurisdiction)) {
+      seen.set(r.jurisdiction, r.jurisdiction_display);
+    }
+  }
+
+  return Array.from(seen.entries())
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
 export default async function FeedPage({ searchParams }: FeedPageProps) {
   const params = await searchParams;
   const supabase = createAdminClient();
-  const [{ regulations, total, page, totalPages }, updates, velocityScores] =
-    await Promise.all([
-      getRegulations(params),
-      getRecentUpdates(),
-      computeVelocityScores(supabase),
-    ]);
+  const [
+    { regulations, total, page, totalPages },
+    updates,
+    velocityScores,
+    jurisdictionOptions,
+  ] = await Promise.all([
+    getRegulations(params),
+    getRecentUpdates(),
+    computeVelocityScores(supabase),
+    getDistinctJurisdictions(),
+  ]);
 
   return (
     <FeedClient
@@ -85,6 +112,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
       totalPages={totalPages}
       updates={updates}
       velocityScores={velocityScores}
+      jurisdictionOptions={jurisdictionOptions}
     />
   );
 }

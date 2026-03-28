@@ -33,21 +33,7 @@ import type { VelocityMap, VelocityResult } from "@/lib/utils/velocity";
 /* Config                                                              */
 /* ------------------------------------------------------------------ */
 
-const jurisdictionOptions = [
-  { value: "all", label: "All Jurisdictions" },
-  { value: "EU", label: "EU" },
-  { value: "US", label: "US (Federal)" },
-  { value: "US-TX", label: "US — TX" },
-  { value: "US-CO", label: "US — CO" },
-  { value: "US-CA", label: "US — CA" },
-  { value: "US-IL", label: "US — IL" },
-  { value: "CA", label: "Canada" },
-  { value: "SG", label: "Singapore" },
-  { value: "GB", label: "UK" },
-  { value: "BR", label: "Brazil" },
-  { value: "ID", label: "Indonesia" },
-  { value: "INTL", label: "International" },
-];
+// Jurisdiction options are now passed as props from the server
 
 const statusOptions = [
   { value: "all", label: "All Statuses" },
@@ -109,6 +95,7 @@ interface FeedClientProps {
   totalPages: number;
   updates: RegulatoryUpdate[];
   velocityScores: VelocityMap;
+  jurisdictionOptions: { value: string; label: string }[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -122,7 +109,12 @@ export function FeedClient({
   totalPages,
   updates,
   velocityScores,
+  jurisdictionOptions: jurisdictionOptionsProp,
 }: FeedClientProps) {
+  const jurisdictionOptions = useMemo(
+    () => [{ value: "all", label: "All Jurisdictions" }, ...jurisdictionOptionsProp],
+    [jurisdictionOptionsProp]
+  );
   const router = useRouter();
   const searchParams = useSearchParams();
 
