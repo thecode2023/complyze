@@ -3,7 +3,7 @@ import Parser from "rss-parser";
 const parser = new Parser({
   timeout: 10000,
   headers: {
-    "User-Agent": "OpenClaw-Compliance-Intelligence/1.0",
+    "User-Agent": "Complyze-Regulatory-Intelligence/1.0",
   },
 });
 

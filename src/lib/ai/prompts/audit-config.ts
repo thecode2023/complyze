@@ -23,7 +23,7 @@ ${reg.compliance_implications.map((c: string) => `  * ${c}`).join("\n")}
     )
     .join("\n---\n");
 
-  return `You are a compliance auditor specializing in AI agent governance. You are auditing an OpenClaw agent configuration against a live database of AI regulations.
+  return `You are a compliance auditor specializing in AI agent governance. You are auditing an AI agent configuration against a live database of AI regulations.
 
 CRITICAL RULES:
 1. You MUST ONLY cite regulations that appear in the REGULATORY DATABASE below. Do NOT invent, hallucinate, or reference any regulation not listed.

@@ -27,7 +27,7 @@ export function ConfigInput({
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder='Paste your OpenClaw agent config (JSON) here...\n\n{\n  "name": "my-agent",\n  "capabilities": { ... }\n}'
+          placeholder='Paste your AI agent config (JSON) here...\n\n{\n  "name": "my-agent",\n  "capabilities": { ... }\n}'
           className="min-h-[300px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
           spellCheck={false}
         />

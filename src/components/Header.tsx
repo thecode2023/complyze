@@ -39,7 +39,7 @@ export function Header() {
         <Link href="/" className="flex items-center gap-2 mr-8">
           <Shield className="h-6 w-6 text-primary" />
           <span className="font-semibold text-lg tracking-tight">
-            OpenClaw
+            Complyze
           </span>
         </Link>
 

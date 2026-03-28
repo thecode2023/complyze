@@ -242,5 +242,5 @@ export const exampleConfigs: ExampleConfig[] = [
 ];
 
 // Legacy export for backward compatibility
-export const exampleOpenClawConfig = exampleConfigs[3].config;
-export const exampleConfigString = JSON.stringify(exampleOpenClawConfig, null, 2);
+export const exampleAgentConfig = exampleConfigs[3].config;
+export const exampleConfigString = JSON.stringify(exampleAgentConfig, null, 2);

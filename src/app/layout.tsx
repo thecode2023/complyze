@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "OpenClaw Compliance Intelligence",
+  title: "Complyze — AI Regulatory Intelligence",
   description:
-    "Open-source regulatory intelligence platform for AI agent compliance. Track global AI regulations and audit your agent configurations against live regulatory data.",
+    "Track global AI regulations and audit agent configurations against live regulatory data. Zero hallucinated citations.",
 };
 
 export default function RootLayout({

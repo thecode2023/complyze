@@ -70,11 +70,11 @@ export default async function HomePage() {
             </Badge>
           </div>
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-            AI Agent Compliance Intelligence
+            AI Regulatory Intelligence Platform
           </h1>
           <p className="mt-4 text-lg text-muted-foreground leading-relaxed max-w-2xl">
-            Track global AI regulations in real time and audit your OpenClaw
-            agent configurations against live regulatory data. No hallucinated
+            Track global AI regulations in real time and audit your AI agent
+            configurations against live regulatory data. No hallucinated
             advice — every finding is grounded in real, timestamped regulations.
           </p>
 

@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
   if (!configText || typeof configText !== "string") {
     return NextResponse.json(
-      { error: "Missing 'config' field. Provide the OpenClaw config as a string." },
+      { error: "Missing 'config' field. Provide the agent config as a string." },
       { status: 400 }
     );
   }

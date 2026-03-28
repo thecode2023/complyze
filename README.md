@@ -1,4 +1,4 @@
-# OpenClaw Compliance Intelligence System
+# Complyze — AI Regulatory Intelligence Platform
 
 Real-time AI regulatory intelligence platform that tracks global AI legislation, audits agent configurations against live regulations, and delivers personalized compliance posture monitoring.
 
@@ -55,7 +55,7 @@ Real-time AI regulatory intelligence platform that tracks global AI legislation,
 - Regulatory velocity scoring per jurisdiction (0-100)
 
 ### Layer 2: Configuration Auditor
-- Paste any OpenClaw agent config (JSON) for compliance audit
+- Paste any AI agent config (JSON) for compliance audit
 - Every finding grounded in real regulations (zero hallucinated citations)
 - 5 industry-specific example configs (Healthcare, FinTech, HR, Support, Moderation)
 - Cost analysis tab with penalty exposure, remediation estimates, ROI calculation

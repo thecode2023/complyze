@@ -1,4 +1,4 @@
-export interface OpenClawConfig {
+export interface AgentConfig {
   raw: string;
   parsed: Record<string, unknown>;
   detected_capabilities: string[];
