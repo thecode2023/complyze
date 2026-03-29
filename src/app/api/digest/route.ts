@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerComponentClient } from "@/lib/supabase/server";
 import { callGeminiWithRetry } from "@/lib/ai/client";
+import { validateCronSecret } from "@/lib/auth/cron";
 import { subDays, format } from "date-fns";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -125,19 +126,14 @@ export async function POST(request: NextRequest) {
       const digest = await generateDigestForUser(supabase, profile, periodStart, periodEnd, now);
       return NextResponse.json({ status: "completed", digest });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
-      return NextResponse.json({ error: msg }, { status: 500 });
+      console.error("Test digest generation failed:", err);
+      return NextResponse.json({ error: "Digest generation failed." }, { status: 500 });
     }
   }
 
-  // Production mode
-  const cronSecret =
-    request.headers.get("x-cron-secret") ||
-    request.headers.get("authorization")?.replace("Bearer ", "");
-
-  if (cronSecret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // Production mode — require CRON_SECRET
+  const authError = validateCronSecret(request);
+  if (authError) return authError;
 
   const supabase = createAdminClient();
   const now = new Date();

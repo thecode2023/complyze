@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { validateCronSecret } from "@/lib/auth/cron";
 import { seedRegulations, seedUpdates } from "@/lib/seed/regulations";
 
 export async function POST(request: NextRequest) {
-  const cronSecret = request.headers.get("x-cron-secret");
-  if (cronSecret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authError = validateCronSecret(request);
+  if (authError) return authError;
 
   const supabase = createAdminClient();
 

@@ -29,9 +29,13 @@ export async function GET(request: NextRequest) {
     query = query.eq("category", category);
   }
   if (search) {
-    query = query.or(
-      `title.ilike.%${search}%,summary.ilike.%${search}%,jurisdiction_display.ilike.%${search}%`
-    );
+    // Sanitize: strip PostgREST operators and special characters
+    const sanitized = search.replace(/[%_\\,().|]/g, "").slice(0, 200);
+    if (sanitized) {
+      query = query.or(
+        `title.ilike.%${sanitized}%,summary.ilike.%${sanitized}%,jurisdiction_display.ilike.%${sanitized}%`
+      );
+    }
   }
 
   query = query.order("updated_at", { ascending: false });

@@ -39,9 +39,12 @@ async function getRegulations(params: {
     query = query.eq("category", params.category);
   }
   if (params.search) {
-    query = query.or(
-      `title.ilike.%${params.search}%,summary.ilike.%${params.search}%,jurisdiction_display.ilike.%${params.search}%`
-    );
+    const sanitized = params.search.replace(/[%_\\,().|]/g, "").slice(0, 200);
+    if (sanitized) {
+      query = query.or(
+        `title.ilike.%${sanitized}%,summary.ilike.%${sanitized}%,jurisdiction_display.ilike.%${sanitized}%`
+      );
+    }
   }
 
   query = query.order("effective_date", { ascending: false, nullsFirst: false });

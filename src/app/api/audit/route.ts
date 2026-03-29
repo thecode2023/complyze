@@ -12,18 +12,27 @@ import type { AuditReport, AuditFinding } from "@/lib/types/audit";
 const rateLimitMap = new Map<string, number[]>();
 const RATE_LIMIT_MAX = 10;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const MAX_TRACKED_IPS = 10000; // prevent unbounded growth
 
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
   const timestamps = rateLimitMap.get(ip) ?? [];
-  // Prune old entries
   const recent = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
   if (recent.length >= RATE_LIMIT_MAX) {
     rateLimitMap.set(ip, recent);
-    return false; // rate limited
+    return false;
   }
   recent.push(now);
   rateLimitMap.set(ip, recent);
+
+  // Periodic cleanup: if map exceeds max, prune stale entries
+  if (rateLimitMap.size > MAX_TRACKED_IPS) {
+    for (const [key, ts] of rateLimitMap.entries()) {
+      if (ts.every((t) => now - t >= RATE_LIMIT_WINDOW_MS)) {
+        rateLimitMap.delete(key);
+      }
+    }
+  }
   return true;
 }
 

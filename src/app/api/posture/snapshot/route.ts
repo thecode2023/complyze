@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { validateCronSecret } from "@/lib/auth/cron";
 import { format } from "date-fns";
 
 // POST: Generates posture snapshots for all onboarded users (protected by CRON_SECRET)
 export async function POST(request: NextRequest) {
-  const cronSecret =
-    request.headers.get("x-cron-secret") ||
-    request.headers.get("authorization")?.replace("Bearer ", "");
-
-  if (cronSecret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authError = validateCronSecret(request);
+  if (authError) return authError;
 
   const supabase = createAdminClient();
   const today = format(new Date(), "yyyy-MM-dd");

@@ -19,7 +19,7 @@ export async function GET() {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 404 });
+    return NextResponse.json({ error: "Operation failed" }, { status: 404 });
   }
 
   return NextResponse.json(profile);
@@ -37,6 +37,14 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
+
+  // Validate array fields
+  if (body.jurisdictions != null && !Array.isArray(body.jurisdictions)) {
+    return NextResponse.json({ error: "jurisdictions must be an array" }, { status: 400 });
+  }
+  if (body.ai_use_cases != null && !Array.isArray(body.ai_use_cases)) {
+    return NextResponse.json({ error: "ai_use_cases must be an array" }, { status: 400 });
+  }
 
   const { data: profile, error } = await supabase
     .from("user_profiles")
@@ -58,7 +66,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create profile" }, { status: 500 });
   }
 
   return NextResponse.json(profile, { status: 201 });
@@ -103,7 +111,7 @@ export async function PUT(request: NextRequest) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Operation failed" }, { status: 500 });
   }
 
   return NextResponse.json(profile);

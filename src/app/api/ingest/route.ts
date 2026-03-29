@@ -4,19 +4,14 @@ import { callGeminiWithRetry } from "@/lib/ai/client";
 import { buildClassifyRegulationPrompt } from "@/lib/ai/prompts/classify-regulation";
 import { buildExtractUpdatePrompt } from "@/lib/ai/prompts/extract-update";
 import { fetchAllRSSFeeds } from "@/lib/utils/rss";
+import { validateCronSecret } from "@/lib/auth/cron";
 import type { ClassifiedRegulation, ExtractedUpdate } from "@/lib/ai/types";
 
 const MAX_API_CALLS = 20;
 
 export async function POST(request: NextRequest) {
-  // Auth gate
-  const cronSecret =
-    request.headers.get("x-cron-secret") ||
-    request.headers.get("authorization")?.replace("Bearer ", "");
-
-  if (cronSecret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authError = validateCronSecret(request);
+  if (authError) return authError;
 
   const supabase = createAdminClient();
   const runId = crypto.randomUUID();
@@ -293,7 +288,7 @@ export async function POST(request: NextRequest) {
       {
         run_id: runId,
         status: "failed",
-        error: errorMsg,
+        error: "Ingestion pipeline failed. Check server logs.",
       },
       { status: 500 }
     );
