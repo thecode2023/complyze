@@ -256,7 +256,7 @@ export function JurisdictionCommandCenter({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold tracking-tight">Jurisdiction Command Center</h3>
+        <h3 className="text-xs font-mono font-semibold uppercase tracking-[0.15em] text-[var(--text-tertiary)]">Jurisdiction Command Center</h3>
         <span className="text-[10px] text-muted-foreground tabular-nums">
           {jurisdictions.length} tracked
         </span>

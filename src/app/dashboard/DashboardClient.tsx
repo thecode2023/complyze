@@ -151,16 +151,8 @@ export function DashboardClient({
       {/* ============================================================= */}
       {/* 1. Compliance Overview Bar                                     */}
       {/* ============================================================= */}
-      <div className="relative rounded-xl border border-border overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.06] via-card to-card" />
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)",
-            backgroundSize: "24px 24px",
-          }}
-        />
+      <div className="stagger-in stagger-delay-1 relative rounded-xl border border-[var(--border-subtle)] overflow-hidden glass breathe-glow">
+        <div className="absolute inset-0 grid-bg" />
         <div className="relative p-4 sm:p-5">
           <div className="flex flex-col sm:flex-row items-center gap-5">
             <div className="relative shrink-0">
@@ -216,7 +208,7 @@ export function DashboardClient({
       {/* ============================================================= */}
       {/* 2. Quick Stats Pills                                           */}
       {/* ============================================================= */}
-      <div className="flex flex-wrap gap-2">
+      <div className="stagger-in stagger-delay-2 flex flex-wrap gap-2">
         <StatPill icon={Gavel} label={`${quickStats.enactedCount} enacted`} color="text-emerald-500" />
         <StatPill icon={FileText} label={`${quickStats.proposedCount} proposed`} color="text-amber-500" />
         <StatPill
@@ -276,7 +268,7 @@ export function DashboardClient({
       {/* ============================================================= */}
       {/* 4. Compliance Trend — full width                               */}
       {/* ============================================================= */}
-      <div className="rounded-lg border border-border bg-card p-4">
+      <div className="stagger-in stagger-delay-4 rounded-lg border border-[var(--border-subtle)] bg-card p-4">
         <ComplianceTrend snapshots={snapshots} />
       </div>
 
@@ -292,7 +284,7 @@ export function DashboardClient({
       {/* ============================================================= */}
       {/* 5. Activity Feed — full width                                  */}
       {/* ============================================================= */}
-      <div className="rounded-lg border border-border bg-card p-4">
+      <div className="stagger-in stagger-delay-5 rounded-lg border border-[var(--border-subtle)] bg-card p-4">
         <AlertsFeed
           alerts={alerts}
           digest={digest}
@@ -304,7 +296,7 @@ export function DashboardClient({
       {/* ============================================================= */}
       {/* 6. Quick Actions                                               */}
       {/* ============================================================= */}
-      <div className="rounded-lg border border-border bg-card p-3">
+      <div className="rounded-lg border border-[var(--border-subtle)] bg-card p-3">
         <div className="flex flex-wrap gap-2.5 justify-center sm:justify-start">
           <Button variant="outline" size="sm" asChild>
             <a href="/audit">
@@ -361,15 +353,15 @@ function StatCard({
 }) {
   const s = accentStyles[accent];
   return (
-    <div className={cn("flex items-center gap-2.5 rounded-lg border border-border border-l-[3px] bg-card/50 px-2.5 py-2", s.border)}>
+    <div className={cn("flex items-center gap-2.5 rounded-lg border border-[var(--border-subtle)] border-l-[3px] bg-[var(--bg-secondary)] px-2.5 py-2 transition-[border-color] duration-200 hover:border-[var(--border-accent)]", s.border)}>
       <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-md", s.icon)}>
         <Icon className="h-3.5 w-3.5" />
       </div>
       <div className="min-w-0">
-        <div className={cn("text-base font-bold leading-tight tabular-nums", s.value)}>
+        <div className={cn("text-base font-mono font-bold leading-tight tabular-nums", s.value)}>
           {displayValue ?? value}
         </div>
-        <div className="text-[10px] text-muted-foreground leading-tight">{label}</div>
+        <div className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-tertiary)] leading-tight">{label}</div>
       </div>
     </div>
   );
@@ -389,9 +381,9 @@ function StatPill({
   color: string;
 }) {
   return (
-    <div className="flex items-center gap-1.5 rounded-full border border-border bg-card/50 px-2.5 py-1 text-[11px]">
+    <div className="flex items-center gap-1.5 rounded-full border border-[var(--border-subtle)] glass px-2.5 py-1 text-[11px] font-mono">
       <Icon className={cn("h-3 w-3", color)} />
-      <span className="text-muted-foreground">{label}</span>
+      <span className="text-[var(--text-secondary)]">{label}</span>
     </div>
   );
 }

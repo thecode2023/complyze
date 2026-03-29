@@ -112,7 +112,7 @@ export function AlertsFeed({ alerts, digest, onAlertUpdate, showTestDigest }: Al
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Activity Feed</h3>
+        <h3 className="text-xs font-mono font-semibold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">Activity Feed</h3>
         <div className="flex gap-1">
           {(["all", "unread", "critical"] as Filter[]).map((f) => (
             <button
@@ -133,7 +133,7 @@ export function AlertsFeed({ alerts, digest, onAlertUpdate, showTestDigest }: Al
 
       {/* Weekly Digest Featured Card */}
       {digest ? (
-        <div className="relative rounded-lg border-2 border-primary/30 overflow-hidden">
+        <div className="relative rounded-lg border border-[var(--border-accent)] overflow-hidden shadow-[0_0_20px_var(--accent-glow)]">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.08] via-primary/[0.03] to-transparent" />
           <div className="relative p-4">
             <div className="flex items-start justify-between gap-2">
@@ -142,7 +142,7 @@ export function AlertsFeed({ alerts, digest, onAlertUpdate, showTestDigest }: Al
                   <Newspaper className="h-3.5 w-3.5 text-primary" />
                 </div>
                 <div>
-                  <span className="text-sm font-semibold">What Changed This Week</span>
+                  <span className="text-xs font-mono font-semibold uppercase tracking-[0.1em] text-[var(--text-bright)]">Weekly Briefing</span>
                   <p className="text-[10px] text-muted-foreground mt-0.5">
                     Generated {digest.generated_at ? format(parseISO(digest.generated_at), "MMM d, yyyy") : "recently"} · Covering{" "}
                     {digest.digest_content.period_label} ·{" "}

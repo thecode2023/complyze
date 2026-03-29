@@ -37,8 +37,8 @@ export function Header() {
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-14 max-w-7xl items-center px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 mr-8">
-          <Shield className="h-6 w-6 text-primary" />
-          <span className="font-semibold text-lg tracking-tight">
+          <Shield className="h-5 w-5 text-primary" />
+          <span className="font-mono font-bold text-sm tracking-wider uppercase text-[var(--text-bright)]">
             Complyze
           </span>
         </Link>

@@ -262,7 +262,7 @@ export function AuditReportDisplay({
       <div className="flex items-center gap-1 border-b border-border">
         <button
           onClick={() => setActiveTab("findings")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-4 py-2 text-xs font-mono uppercase tracking-wider border-b-2 transition-colors ${
             activeTab === "findings"
               ? "border-primary text-foreground"
               : "border-transparent text-muted-foreground hover:text-foreground"
@@ -272,7 +272,7 @@ export function AuditReportDisplay({
         </button>
         <button
           onClick={() => setActiveTab("costs")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+          className={`px-4 py-2 text-xs font-mono uppercase tracking-wider border-b-2 transition-colors flex items-center gap-1.5 ${
             activeTab === "costs"
               ? "border-primary text-foreground"
               : "border-transparent text-muted-foreground hover:text-foreground"
@@ -283,7 +283,7 @@ export function AuditReportDisplay({
         </button>
         <button
           onClick={() => setActiveTab("recommendations")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+          className={`px-4 py-2 text-xs font-mono uppercase tracking-wider border-b-2 transition-colors flex items-center gap-1.5 ${
             activeTab === "recommendations"
               ? "border-primary text-foreground"
               : "border-transparent text-muted-foreground hover:text-foreground"

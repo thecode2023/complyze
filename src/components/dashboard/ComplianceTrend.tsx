@@ -44,7 +44,7 @@ export function ComplianceTrend({ snapshots }: ComplianceTrendProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Compliance Score Over Time</h3>
+        <h3 className="text-xs font-mono font-semibold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">Compliance Score Over Time</h3>
         {latest && (
           <div
             className={cn(

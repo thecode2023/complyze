@@ -228,7 +228,7 @@ export const WorldMap = memo(function WorldMap({ jurisdictions }: WorldMapProps)
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <div className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
-            <h3 className="text-[10px] font-semibold text-cyan-400/80 uppercase tracking-[0.2em]">
+            <h3 className="text-[10px] font-mono font-semibold text-cyan-400/80 uppercase tracking-[0.2em]">
               Regulatory Intelligence — Global Monitor
             </h3>
           </div>
@@ -240,7 +240,7 @@ export const WorldMap = memo(function WorldMap({ jurisdictions }: WorldMapProps)
         </div>
 
         {/* Map container */}
-        <div className="relative max-h-[400px] overflow-hidden" onMouseLeave={() => setTooltip(null)}>
+        <div className="relative max-h-[400px] overflow-hidden vignette" onMouseLeave={() => setTooltip(null)}>
           {/* HUD corner brackets — overlaid via absolute positioning */}
           <div className="absolute top-0 left-0 w-3 h-3 border-l border-t border-cyan-500/10 pointer-events-none z-10" />
           <div className="absolute top-0 right-0 w-3 h-3 border-r border-t border-cyan-500/10 pointer-events-none z-10" />

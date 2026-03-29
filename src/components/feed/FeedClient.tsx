@@ -210,8 +210,8 @@ export function FeedClient({
       {/* Header */}
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-lg sm:text-xl font-bold tracking-tight">Regulatory Intelligence Feed</h1>
-          <p className="text-xs sm:text-xs text-muted-foreground mt-0.5">
+          <h1 className="text-sm sm:text-base font-mono font-bold uppercase tracking-[0.1em] text-[var(--text-bright)]">Regulatory Intelligence Feed</h1>
+          <p className="text-xs font-mono text-[var(--text-tertiary)] mt-0.5 tabular-nums">
             {total} regulation{total !== 1 ? "s" : ""} tracked
           </p>
         </div>
@@ -246,7 +246,7 @@ export function FeedClient({
       {/* ============================================================= */}
       {/* Filter Bar                                                     */}
       {/* ============================================================= */}
-      <div className="rounded-lg border border-border bg-card/50 px-3 py-2">
+      <div className="rounded-lg glass sticky top-14 z-30 px-3 py-2">
         {/* Mobile: filter toggle + search */}
         <div className="flex items-center gap-2">
           <button
@@ -533,10 +533,10 @@ function TableRow({
       <tr
         onClick={onToggle}
         className={cn(
-          "cursor-pointer transition-colors",
+          "cursor-pointer transition-all duration-150 border-l-2 border-l-transparent",
           isExpanded
-            ? "bg-accent/30"
-            : "hover:bg-accent/10"
+            ? "bg-[var(--bg-tertiary)] border-l-[var(--accent-primary)]"
+            : "hover:bg-[var(--bg-tertiary)] hover:border-l-[var(--accent-primary)]"
         )}
       >
         <td className="px-3 py-2 whitespace-nowrap">
@@ -670,7 +670,7 @@ function Th({
   return (
     <th
       className={cn(
-        "px-3 py-2 text-left font-semibold text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors whitespace-nowrap",
+        "px-3 py-3 text-left font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-tertiary)] cursor-pointer select-none hover:text-[var(--text-primary)] transition-colors whitespace-nowrap border-b border-[var(--border-subtle)]",
         wide && "min-w-[240px]"
       )}
       onClick={() => sort(field)}

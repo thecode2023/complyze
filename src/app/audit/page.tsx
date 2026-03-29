@@ -52,10 +52,10 @@ export default function AuditPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       <div className="mb-4 sm:mb-6">
-        <h1 className="text-lg sm:text-2xl font-bold tracking-tight">
+        <h1 className="text-sm sm:text-base font-mono font-bold uppercase tracking-[0.1em] text-[var(--text-bright)]">
           AI Agent Configuration Auditor
         </h1>
-        <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+        <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-1">
           Paste an AI agent configuration to audit it against live regulatory
           data. Every finding is grounded in real regulations — zero
           hallucinated citations.
