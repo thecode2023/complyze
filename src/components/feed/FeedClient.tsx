@@ -96,6 +96,8 @@ interface FeedClientProps {
   updates: RegulatoryUpdate[];
   velocityScores: VelocityMap;
   jurisdictionOptions: { value: string; label: string }[];
+  lastVerified: string | null;
+  statusCounts: Record<string, number>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -110,6 +112,8 @@ export function FeedClient({
   updates,
   velocityScores,
   jurisdictionOptions: jurisdictionOptionsProp,
+  lastVerified,
+  statusCounts,
 }: FeedClientProps) {
   const jurisdictionOptions = useMemo(
     () => [{ value: "all", label: "All Jurisdictions" }, ...jurisdictionOptionsProp],
@@ -214,6 +218,33 @@ export function FeedClient({
           <p className="text-xs font-mono text-[var(--text-tertiary)] mt-0.5 tabular-nums">
             {total} regulation{total !== 1 ? "s" : ""} tracked
           </p>
+          {/* Status breakdown */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+            {[
+              { key: "enacted", label: "enacted", color: "text-emerald-400" },
+              { key: "in_effect", label: "in effect", color: "text-blue-400" },
+              { key: "proposed", label: "proposed", color: "text-yellow-400" },
+              { key: "under_review", label: "under review", color: "text-orange-400" },
+              { key: "repealed", label: "repealed", color: "text-red-400" },
+            ].map(({ key, label, color }) =>
+              statusCounts[key] ? (
+                <span key={key} className="text-[10px] font-mono">
+                  <span className={color}>{statusCounts[key]}</span>{" "}
+                  <span className="text-[var(--text-tertiary)]">{label}</span>
+                </span>
+              ) : null
+            )}
+          </div>
+          {/* Data freshness */}
+          {lastVerified && (
+            <p className="text-[10px] text-[var(--text-tertiary)] mt-1">
+              Data last updated:{" "}
+              <span className="font-mono tabular-nums">
+                {format(new Date(lastVerified), "MMM d, yyyy 'at' h:mm a")}
+              </span>
+              {" · Next check: daily at 6:00 AM UTC"}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-1 rounded-md border border-border p-0.5">
           <button

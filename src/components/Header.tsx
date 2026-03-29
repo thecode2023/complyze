@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 const publicNavItems = [
   { href: "/feed", label: "Feed" },
   { href: "/audit", label: "Audit" },
+  { href: "/about", label: "About" },
 ];
 
 export function Header() {

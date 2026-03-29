@@ -89,6 +89,29 @@ async function getDistinctJurisdictions() {
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
+async function getFeedMeta() {
+  const supabase = createAdminClient();
+  const [freshnessRes, allRegsRes] = await Promise.all([
+    supabase
+      .from("regulations")
+      .select("last_verified_at")
+      .order("last_verified_at", { ascending: false })
+      .limit(1)
+      .single(),
+    supabase.from("regulations").select("status"),
+  ]);
+
+  const statusCounts: Record<string, number> = {};
+  (allRegsRes.data ?? []).forEach((r: { status: string }) => {
+    statusCounts[r.status] = (statusCounts[r.status] || 0) + 1;
+  });
+
+  return {
+    lastVerified: freshnessRes.data?.last_verified_at ?? null,
+    statusCounts,
+  };
+}
+
 export default async function FeedPage({ searchParams }: FeedPageProps) {
   const params = await searchParams;
   const supabase = createAdminClient();
@@ -97,11 +120,13 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
     updates,
     velocityScores,
     jurisdictionOptions,
+    feedMeta,
   ] = await Promise.all([
     getRegulations(params),
     getRecentUpdates(),
     computeVelocityScores(supabase),
     getDistinctJurisdictions(),
+    getFeedMeta(),
   ]);
 
   return (
@@ -113,6 +138,8 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
       updates={updates}
       velocityScores={velocityScores}
       jurisdictionOptions={jurisdictionOptions}
+      lastVerified={feedMeta.lastVerified}
+      statusCounts={feedMeta.statusCounts}
     />
   );
 }

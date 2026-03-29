@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import yaml from "js-yaml";
 import { ConfigInput } from "@/components/audit/ConfigInput";
 import { AuditReportDisplay } from "@/components/audit/AuditReport";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import type { AuditReport } from "@/lib/types/audit";
+import { exampleConfigs } from "@/lib/utils/example-config";
 
 function parseConfig(input: string): string {
-  // Try JSON first
   try {
     JSON.parse(input);
     return input;
@@ -27,17 +27,114 @@ function parseConfig(input: string): string {
   throw new Error("Invalid configuration. Please paste valid JSON or YAML.");
 }
 
+/* ------------------------------------------------------------------ */
+/* Progress bar component                                              */
+/* ------------------------------------------------------------------ */
+
+const STATUS_MESSAGES = [
+  "Parsing agent configuration...",
+  "Identifying applicable jurisdictions...",
+  "Checking against 42+ regulations...",
+  "Analyzing compliance gaps...",
+  "Generating findings and recommendations...",
+  "Calculating cost exposure...",
+];
+
+function AuditProgress({ done }: { done: boolean }) {
+  const [progress, setProgress] = useState(0);
+  const [msgIndex, setMsgIndex] = useState(0);
+  const startTime = useRef(Date.now());
+
+  // Progress bar: fill to 95% over 15s, then hold
+  useEffect(() => {
+    if (done) {
+      setProgress(100);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const elapsed = (Date.now() - startTime.current) / 1000;
+      // Ease-out curve: fast start, slows toward 95%
+      const target = Math.min(95, 95 * (1 - Math.exp(-elapsed / 5)));
+      setProgress(target);
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [done]);
+
+  // Rotate status messages every 3s
+  useEffect(() => {
+    if (done) return;
+    const interval = setInterval(() => {
+      setMsgIndex((i) => (i + 1) % STATUS_MESSAGES.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [done]);
+
+  return (
+    <div className="flex flex-col items-center justify-center py-16 px-4 w-full">
+      {/* Progress bar */}
+      <div className="w-full max-w-sm mb-6">
+        <div className="h-1.5 w-full rounded-full bg-[var(--bg-tertiary)] overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-300 ease-out"
+            style={{
+              width: `${progress}%`,
+              background: "linear-gradient(90deg, #3b82f6, #1d4ed8)",
+              boxShadow: "0 0 12px rgba(59, 130, 246, 0.4)",
+            }}
+          />
+        </div>
+        <div className="flex justify-between mt-1.5">
+          <span className="text-[10px] font-mono text-[var(--text-tertiary)] tabular-nums">
+            {Math.round(progress)}%
+          </span>
+          <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
+            ~15s
+          </span>
+        </div>
+      </div>
+
+      {/* Rotating status message */}
+      <p
+        key={msgIndex}
+        className="text-sm font-mono text-[var(--text-primary)] animate-in fade-in duration-300"
+      >
+        {done ? "Complete." : STATUS_MESSAGES[msgIndex]}
+      </p>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Page                                                                */
+/* ------------------------------------------------------------------ */
+
+const MAX_SIZE_BYTES = 50 * 1024;
+
 export default function AuditPage() {
-  const [config, setConfig] = useState("");
+  // Pre-load Customer Support Agent example config
+  const [config, setConfig] = useState(() => {
+    const customerSupport = exampleConfigs.find((c) => c.id === "customer-support");
+    return customerSupport ? JSON.stringify(customerSupport.config, null, 2) : "";
+  });
   const [report, setReport] = useState<AuditReport | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [auditDone, setAuditDone] = useState(false);
+  const [cooldown, setCooldown] = useState(false);
 
   const runAudit = async () => {
     setError(null);
     setReport(null);
+    setAuditDone(false);
 
-    // Validate JSON or YAML
+    // Client-side size check
+    if (new TextEncoder().encode(config).length > MAX_SIZE_BYTES) {
+      setError("Config exceeds 50 KB limit.");
+      return;
+    }
+
     let parsedConfig: string;
     try {
       parsedConfig = parseConfig(config);
@@ -62,11 +159,18 @@ export default function AuditPage() {
         return;
       }
 
+      // Signal progress bar to jump to 100%
+      setAuditDone(true);
+      // Brief pause so user sees 100% before results render
+      await new Promise((r) => setTimeout(r, 400));
       setReport(data as AuditReport);
     } catch {
       setError("Network error. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
+      // 5-second cooldown after submission
+      setCooldown(true);
+      setTimeout(() => setCooldown(false), 5000);
     }
   };
 
@@ -91,6 +195,7 @@ export default function AuditPage() {
             onChange={setConfig}
             onSubmit={runAudit}
             isLoading={isLoading}
+            cooldown={cooldown}
           />
         </div>
 
@@ -103,17 +208,7 @@ export default function AuditPage() {
             </Alert>
           )}
 
-          {isLoading && (
-            <div className="flex flex-col items-center justify-center py-20 text-[var(--text-secondary)]">
-              <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent mb-4" />
-              <p className="text-sm font-mono font-medium text-[var(--text-primary)]">
-                Analyzing against 42+ regulations...
-              </p>
-              <p className="text-xs mt-1 text-[var(--text-tertiary)]">
-                This typically takes 10-20 seconds.
-              </p>
-            </div>
-          )}
+          {isLoading && <AuditProgress done={auditDone} />}
 
           {!isLoading && !report && !error && (
             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">

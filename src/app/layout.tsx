@@ -50,6 +50,11 @@ export default function RootLayout({
         <AuthProvider>
           <Header />
           <main className="flex-1">{children}</main>
+          <footer className="border-t border-[var(--border-dim)] py-4 px-4 text-center">
+            <p className="text-[10px] text-[var(--text-tertiary)] max-w-3xl mx-auto leading-relaxed">
+              Complyze provides regulatory intelligence for informational purposes only. This is not legal advice. Consult qualified counsel for compliance decisions.
+            </p>
+          </footer>
         </AuthProvider>
       </body>
     </html>

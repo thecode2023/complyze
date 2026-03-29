@@ -13,7 +13,7 @@ import {
 /* Constants                                                           */
 /* ------------------------------------------------------------------ */
 
-const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+const GEO_URL = "/data/countries-110m.json";
 
 const DARK_FILL = "#141922";
 const DARK_STROKE = "#1e2533";

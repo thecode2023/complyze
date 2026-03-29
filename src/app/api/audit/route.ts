@@ -5,9 +5,54 @@ import { buildAuditConfigPrompt } from "@/lib/ai/prompts/audit-config";
 import type { Regulation } from "@/lib/types/regulation";
 import type { AuditReport, AuditFinding } from "@/lib/types/audit";
 
-export async function POST(request: NextRequest) {
-  let configText: string;
+/* ------------------------------------------------------------------ */
+/* Rate limiter: 10 requests per IP per hour (in-memory)               */
+/* ------------------------------------------------------------------ */
 
+const rateLimitMap = new Map<string, number[]>();
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const timestamps = rateLimitMap.get(ip) ?? [];
+  // Prune old entries
+  const recent = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+  if (recent.length >= RATE_LIMIT_MAX) {
+    rateLimitMap.set(ip, recent);
+    return false; // rate limited
+  }
+  recent.push(now);
+  rateLimitMap.set(ip, recent);
+  return true;
+}
+
+/* ------------------------------------------------------------------ */
+/* Constants                                                           */
+/* ------------------------------------------------------------------ */
+
+const MAX_CONFIG_SIZE = 50 * 1024; // 50KB
+
+/* ------------------------------------------------------------------ */
+/* Route handler                                                       */
+/* ------------------------------------------------------------------ */
+
+export async function POST(request: NextRequest) {
+  // Rate limit by IP
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown";
+
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json(
+      { error: "Too many requests. Maximum 10 audits per hour." },
+      { status: 429 }
+    );
+  }
+
+  // Parse request body
+  let configText: string;
   try {
     const body = await request.json();
     configText = body.config;
@@ -25,7 +70,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Validate that the config is parseable JSON
+  // Server-side size limit
+  if (new TextEncoder().encode(configText).length > MAX_CONFIG_SIZE) {
+    return NextResponse.json(
+      { error: `Config exceeds maximum size of ${MAX_CONFIG_SIZE / 1024}KB.` },
+      { status: 400 }
+    );
+  }
+
+  // Parse config JSON and RE-SERIALIZE to strip any raw text/injection attempts
   let parsedConfig: Record<string, unknown>;
   try {
     parsedConfig = JSON.parse(configText);
@@ -36,9 +89,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Re-serialize: only the data structure reaches Gemini, not raw user text
+  const sanitizedConfig = JSON.stringify(parsedConfig, null, 2);
+
   const supabase = createAdminClient();
 
-  // Fetch current regulations (enacted + in_effect for primary audit, all for context)
+  // Fetch regulations
   const { data: regulations, error: regError } = await supabase
     .from("regulations")
     .select("*")
@@ -46,24 +102,20 @@ export async function POST(request: NextRequest) {
 
   if (regError || !regulations || regulations.length === 0) {
     return NextResponse.json(
-      {
-        error:
-          "No regulations found in database. Please seed the database first.",
-      },
+      { error: "No regulations found in database. Please seed the database first." },
       { status: 500 }
     );
   }
 
   const typedRegulations = regulations as Regulation[];
 
-  // Find the most recent last_verified_at for data freshness
   const dataFreshness = typedRegulations.reduce((latest, reg) => {
     const regDate = new Date(reg.last_verified_at);
     return regDate > latest ? regDate : latest;
   }, new Date(0));
 
-  // Build the audit prompt and call Gemini
-  const prompt = buildAuditConfigPrompt(configText, typedRegulations);
+  // Build prompt with sanitized (re-serialized) config
+  const prompt = buildAuditConfigPrompt(sanitizedConfig, typedRegulations);
 
   let auditResponse: string;
   try {
@@ -76,7 +128,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Parse the response
+  // Parse Gemini response
   let auditData: {
     overall_risk_score: number;
     risk_level: string;
@@ -98,16 +150,29 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Validate grounding: ensure all cited regulation_ids exist in our database
+  // Validate response schema
+  if (
+    typeof auditData.overall_risk_score !== "number" ||
+    auditData.overall_risk_score < 0 ||
+    auditData.overall_risk_score > 100 ||
+    !Array.isArray(auditData.findings) ||
+    !Array.isArray(auditData.jurisdiction_results)
+  ) {
+    return NextResponse.json(
+      { error: "Audit engine returned an invalid response. Please try again." },
+      { status: 500 }
+    );
+  }
+
+  // Validate grounding: strip ungrounded findings
   const regulationIdSet = new Set(typedRegulations.map((r) => r.id));
   const groundedFindings = auditData.findings.filter((f) =>
     regulationIdSet.has(f.regulation_id)
   );
-
   const removedCount = auditData.findings.length - groundedFindings.length;
 
-  // Build the final report
-  const configHash = await hashString(configText);
+  // Build report
+  const configHash = await hashString(sanitizedConfig);
   const report: AuditReport = {
     id: crypto.randomUUID(),
     config_hash: configHash,
@@ -121,17 +186,13 @@ export async function POST(request: NextRequest) {
     data_freshness: dataFreshness.toISOString(),
   };
 
-  // Store the report in Supabase (anonymous — no user_id)
-  const criticalCount = groundedFindings.filter(
-    (f) => f.severity === "critical"
-  ).length;
-  const highCount = groundedFindings.filter(
-    (f) => f.severity === "high"
-  ).length;
+  // Store report
+  const criticalCount = groundedFindings.filter((f) => f.severity === "critical").length;
+  const highCount = groundedFindings.filter((f) => f.severity === "high").length;
 
   await supabase.from("audit_reports").insert({
     config_hash: configHash,
-    config_snippet: configText.substring(0, 500),
+    config_snippet: sanitizedConfig.substring(0, 500),
     overall_risk_score: report.overall_risk_score,
     risk_level: report.risk_level,
     findings_count: groundedFindings.length,
@@ -155,13 +216,9 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, Math.round(value)));
 }
 
-function validateRiskLevel(
-  level: string
-): "critical" | "high" | "medium" | "low" {
+function validateRiskLevel(level: string): "critical" | "high" | "medium" | "low" {
   const valid = ["critical", "high", "medium", "low"];
-  return valid.includes(level)
-    ? (level as "critical" | "high" | "medium" | "low")
-    : "medium";
+  return valid.includes(level) ? (level as "critical" | "high" | "medium" | "low") : "medium";
 }
 
 async function hashString(str: string): Promise<string> {
