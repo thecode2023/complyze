@@ -41,10 +41,12 @@ async function getStats() {
 async function getRecentUpdates() {
   const supabase = createAdminClient();
 
+  // Only show curated updates: verified + status changes/amendments (not seed "new_regulation" artifacts)
   const { data } = await supabase
     .from("regulatory_updates")
     .select("*")
     .eq("verified", true)
+    .in("update_type", ["status_change", "amendment", "enforcement_action"])
     .order("detected_at", { ascending: false })
     .limit(5);
 
@@ -84,7 +86,7 @@ export default async function HomePage() {
               AI Regulatory Intelligence Platform
             </p>
             <p className="mt-4 text-base font-sans text-[var(--text-tertiary)] leading-relaxed max-w-xl">
-              Track global AI regulations in real time and audit your agent
+              Track global AI regulations as they evolve and audit your agent
               configurations against live regulatory data. Every finding is
               grounded in real, timestamped regulations.
             </p>

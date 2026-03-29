@@ -20,6 +20,20 @@ export const metadata: Metadata = {
   title: "Complyze — AI Regulatory Intelligence",
   description:
     "Track global AI regulations and audit agent configurations against live regulatory data. Zero hallucinated citations.",
+  openGraph: {
+    title: "Complyze — AI Regulatory Intelligence",
+    description:
+      "Track 42+ AI regulations across 24 jurisdictions. Audit your agent configs with grounded findings.",
+    url: "https://complyze.dev",
+    siteName: "Complyze",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Complyze — AI Regulatory Intelligence",
+    description:
+      "Track 42+ AI regulations across 24 jurisdictions.",
+  },
 };
 
 export default function RootLayout({

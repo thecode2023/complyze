@@ -14,6 +14,7 @@ import {
   Compass,
   ChevronDown,
 } from "lucide-react";
+import { InfoPopover } from "@/components/ui/info-popover";
 import { cn } from "@/lib/utils";
 import { JURISDICTION_OPTIONS } from "@/lib/types/user";
 import type { JurisdictionPriority } from "@/lib/types/user";
@@ -256,7 +257,12 @@ export function JurisdictionCommandCenter({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-mono font-semibold uppercase tracking-[0.15em] text-[var(--text-tertiary)]">Jurisdiction Command Center</h3>
+        <span className="flex items-center gap-1.5">
+          <h3 className="text-xs font-mono font-semibold uppercase tracking-[0.15em] text-[var(--text-tertiary)]">Jurisdiction Command Center</h3>
+          <InfoPopover title="Velocity Score">
+            Regulatory velocity measures how fast a jurisdiction&apos;s AI regulation is evolving (0-100). Factors: regulation count (20%), updates in last 90 days (30%), enacted/in-effect ratio (25%), enforcement actions (25%). High velocity = prepare now.
+          </InfoPopover>
+        </span>
         <span className="text-[10px] text-muted-foreground tabular-nums">
           {jurisdictions.length} tracked
         </span>

@@ -560,7 +560,7 @@ function TableRow({
           {reg.effective_date ? format(new Date(reg.effective_date), "MMM d, yy") : "\u2014"}
         </td>
         <td className="px-3 py-2 whitespace-nowrap text-muted-foreground tabular-nums">
-          {formatDistanceToNow(new Date(reg.last_verified_at), { addSuffix: true })}
+          {format(new Date(reg.last_verified_at), "MMM d, yyyy")}
         </td>
         <td className="px-3 py-2 whitespace-nowrap">
           {vel ? (
@@ -629,7 +629,7 @@ function TableRow({
                 )}
                 <span className="flex items-center gap-1">
                   <Clock className="h-3 w-3" />
-                  Verified {formatDistanceToNow(new Date(reg.last_verified_at), { addSuffix: true })}
+                  Verified {format(new Date(reg.last_verified_at), "MMM d, yyyy")}
                 </span>
                 <a
                   href={reg.source_url}

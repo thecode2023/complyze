@@ -27,7 +27,7 @@ export function ConfigInput({
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder='Paste your AI agent config (JSON) here...'
+          placeholder='Paste your AI agent config (JSON or YAML) here...'
           className="min-h-[300px] w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-[13px] font-mono leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent-primary)] focus:shadow-[0_0_0_3px_var(--accent-glow)] resize-none transition-[border-color,box-shadow] duration-200"
           spellCheck={false}
         />

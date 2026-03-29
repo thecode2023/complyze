@@ -44,7 +44,7 @@ async function getRegulations(params: {
     );
   }
 
-  query = query.order("updated_at", { ascending: false });
+  query = query.order("effective_date", { ascending: false, nullsFirst: false });
   query = query.range(offset, offset + limit - 1);
 
   const { data, count } = await query;

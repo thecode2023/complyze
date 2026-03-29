@@ -85,10 +85,7 @@ export function RegulationCard({
           )}
           <span className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
-            Verified{" "}
-            {formatDistanceToNow(new Date(regulation.last_verified_at), {
-              addSuffix: true,
-            })}
+            Verified {format(new Date(regulation.last_verified_at), "MMM d, yyyy")}
           </span>
           <a
             href={regulation.source_url}

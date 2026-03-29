@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { FindingCard } from "./FindingCard";
 import { CostAnalysis } from "./CostAnalysis";
+import { ExportButtons } from "./ExportButtons";
 import { formatDistanceToNow } from "date-fns";
 import type {
   AuditReport as AuditReportType,
@@ -453,8 +454,8 @@ export function AuditReportDisplay({
       <Separator />
 
       {/* Export */}
-      <div className="flex justify-end">
-        <Button variant="outline" size="sm" onClick={copyReport}>
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" size="sm" onClick={copyReport} className="text-xs font-mono">
           {copied ? (
             <>
               <Check className="h-3 w-3 mr-1" />
@@ -463,10 +464,11 @@ export function AuditReportDisplay({
           ) : (
             <>
               <Copy className="h-3 w-3 mr-1" />
-              Copy Report as JSON
+              Copy JSON
             </>
           )}
         </Button>
+        <ExportButtons report={report} />
       </div>
     </div>
   );

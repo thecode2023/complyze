@@ -10,7 +10,6 @@ import {
   FileSearch,
   Newspaper,
   UserCog,
-  Info,
   Clock,
   Gavel,
   FileText,
@@ -20,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { InfoPopover } from "@/components/ui/info-popover";
 import { ComplianceGauge } from "@/components/dashboard/ComplianceGauge";
 import { ComplianceTrend, type PostureSnapshot } from "@/components/dashboard/ComplianceTrend";
 import {
@@ -394,28 +394,11 @@ function StatPill({
 /* ------------------------------------------------------------------ */
 
 function ScoreInfoButton() {
-  const [open, setOpen] = useState(false);
   return (
     <div className="absolute -top-1 -right-1">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-        aria-label="Score info"
-      >
-        <Info className="h-3 w-3" />
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-7 z-50 w-56 rounded-md border border-border bg-popover p-2.5 shadow-lg text-[11px] text-popover-foreground">
-            <p className="font-medium mb-1">How is this calculated?</p>
-            <p className="text-muted-foreground leading-relaxed">
-              Based on regulation coverage, audit findings, and enacted regulation
-              ratio across your tracked jurisdictions. Updates daily.
-            </p>
-          </div>
-        </>
-      )}
+      <InfoPopover title="Compliance Score">
+        Your compliance posture score (0-100) based on regulation coverage across your tracked jurisdictions, latest audit findings severity, and ratio of enacted vs proposed regulations. Higher is better. Run audits to improve your score.
+      </InfoPopover>
     </div>
   );
 }
