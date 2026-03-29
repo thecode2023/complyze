@@ -223,8 +223,7 @@
   to { opacity: 1; transform: translateY(0); }
 }
 .stagger-in {
-  animation: fade-up 0.5s ease forwards;
-  opacity: 0;
+  animation: fade-up 0.6s ease both;
 }
 .stagger-delay-1 { animation-delay: 0.1s; }
 .stagger-delay-2 { animation-delay: 0.2s; }

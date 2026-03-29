@@ -151,7 +151,8 @@ export function DashboardClient({
       {/* ============================================================= */}
       {/* 1. Compliance Overview Bar                                     */}
       {/* ============================================================= */}
-      <div className="stagger-in stagger-delay-1 relative rounded-xl border border-[var(--border-subtle)] overflow-hidden glass breathe-glow">
+      <div className="relative rounded-xl border border-[var(--border-subtle)] overflow-hidden backdrop-blur-sm"
+        style={{ background: "rgba(17, 24, 39, 0.7)" }}>
         <div className="absolute inset-0 grid-bg" />
         <div className="relative p-4 sm:p-5">
           <div className="flex flex-col sm:flex-row items-center gap-5">
@@ -208,7 +209,7 @@ export function DashboardClient({
       {/* ============================================================= */}
       {/* 2. Quick Stats Pills                                           */}
       {/* ============================================================= */}
-      <div className="stagger-in stagger-delay-2 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2">
         <StatPill icon={Gavel} label={`${quickStats.enactedCount} enacted`} color="text-emerald-500" />
         <StatPill icon={FileText} label={`${quickStats.proposedCount} proposed`} color="text-amber-500" />
         <StatPill
@@ -268,7 +269,7 @@ export function DashboardClient({
       {/* ============================================================= */}
       {/* 4. Compliance Trend — full width                               */}
       {/* ============================================================= */}
-      <div className="stagger-in stagger-delay-4 rounded-lg border border-[var(--border-subtle)] bg-card p-4">
+      <div className="rounded-lg border border-[var(--border-subtle)] bg-card p-4">
         <ComplianceTrend snapshots={snapshots} />
       </div>
 
@@ -284,7 +285,7 @@ export function DashboardClient({
       {/* ============================================================= */}
       {/* 5. Activity Feed — full width                                  */}
       {/* ============================================================= */}
-      <div className="stagger-in stagger-delay-5 rounded-lg border border-[var(--border-subtle)] bg-card p-4">
+      <div className="rounded-lg border border-[var(--border-subtle)] bg-card p-4">
         <AlertsFeed
           alerts={alerts}
           digest={digest}
