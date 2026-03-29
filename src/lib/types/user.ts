@@ -83,9 +83,22 @@ export const JURISDICTION_OPTIONS: JurisdictionOption[] = [
   { code: "AU", name: "Australia", flag: "🇦🇺", region: "Asia-Pacific" },
   { code: "IN", name: "India", flag: "🇮🇳", region: "Asia-Pacific" },
 
+  { code: "TH", name: "Thailand", flag: "🇹🇭", region: "Asia-Pacific" },
+  { code: "PH", name: "Philippines", flag: "🇵🇭", region: "Asia-Pacific" },
+  { code: "VN", name: "Vietnam", flag: "🇻🇳", region: "Asia-Pacific" },
+  { code: "TW", name: "Taiwan", flag: "🇹🇼", region: "Asia-Pacific" },
+  { code: "HK", name: "Hong Kong", flag: "🇭🇰", region: "Asia-Pacific" },
+
   // Middle East & Africa
   { code: "SA", name: "Saudi Arabia", flag: "🇸🇦", region: "Middle East & Africa" },
   { code: "ZA", name: "South Africa", flag: "🇿🇦", region: "Middle East & Africa" },
+  { code: "AE", name: "United Arab Emirates", flag: "🇦🇪", region: "Middle East & Africa" },
+  { code: "IL", name: "Israel", flag: "🇮🇱", region: "Middle East & Africa" },
+  { code: "KE", name: "Kenya", flag: "🇰🇪", region: "Middle East & Africa" },
+  { code: "NG", name: "Nigeria", flag: "🇳🇬", region: "Middle East & Africa" },
+
+  // Americas
+  { code: "MX", name: "Mexico", flag: "🇲🇽", region: "Latin America" },
 
   // International
   { code: "INTL", name: "International (OECD)", flag: "🌐", region: "International" },

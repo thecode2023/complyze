@@ -201,12 +201,92 @@ export const penaltyData: Record<string, PenaltyStructure> = {
     jurisdiction_display: "Saudi Arabia",
   },
   ZA: {
-    max_fine_fixed: 500_000,     // ZAR 10M ≈ $500K
+    max_fine_fixed: 500_000,
     max_fine_percentage: null,
     fine_basis: "up to ZAR 10 million + imprisonment",
     criminal_penalties: true,
     enforcement_body: "Information Regulator",
     jurisdiction_display: "South Africa",
+  },
+  TH: {
+    max_fine_fixed: 140_000,     // THB 5M ≈ $140K
+    max_fine_percentage: null,
+    fine_basis: "up to THB 5 million + criminal penalties",
+    criminal_penalties: true,
+    enforcement_body: "Personal Data Protection Committee (PDPC)",
+    jurisdiction_display: "Thailand",
+  },
+  PH: {
+    max_fine_fixed: 90_000,      // PHP 5M ≈ $90K
+    max_fine_percentage: null,
+    fine_basis: "fines PHP 500K-5M + imprisonment 1-6 years",
+    criminal_penalties: true,
+    enforcement_body: "National Privacy Commission (NPC)",
+    jurisdiction_display: "Philippines",
+  },
+  VN: {
+    max_fine_fixed: null,
+    max_fine_percentage: null,
+    fine_basis: "administrative fines under cybersecurity law",
+    criminal_penalties: false,
+    enforcement_body: "Ministry of Public Security",
+    jurisdiction_display: "Vietnam",
+  },
+  TW: {
+    max_fine_fixed: null,
+    max_fine_percentage: null,
+    fine_basis: "pending legislation (AI Basic Act proposed)",
+    criminal_penalties: false,
+    enforcement_body: "Pending",
+    jurisdiction_display: "Taiwan",
+  },
+  HK: {
+    max_fine_fixed: null,
+    max_fine_percentage: null,
+    fine_basis: "PCPD enforcement under Privacy Ordinance",
+    criminal_penalties: false,
+    enforcement_body: "Privacy Commissioner for Personal Data",
+    jurisdiction_display: "Hong Kong",
+  },
+  AE: {
+    max_fine_fixed: 545_000,     // AED 2M ≈ $545K
+    max_fine_percentage: null,
+    fine_basis: "fines up to AED 2 million",
+    criminal_penalties: false,
+    enforcement_body: "UAE Data Office",
+    jurisdiction_display: "United Arab Emirates",
+  },
+  IL: {
+    max_fine_fixed: null,
+    max_fine_percentage: null,
+    fine_basis: "existing privacy law penalties",
+    criminal_penalties: false,
+    enforcement_body: "Privacy Protection Authority",
+    jurisdiction_display: "Israel",
+  },
+  MX: {
+    max_fine_fixed: 1_800_000,   // ~320K daily min wages ≈ $1.8M
+    max_fine_percentage: null,
+    fine_basis: "100-320K times daily minimum wage",
+    criminal_penalties: false,
+    enforcement_body: "INAI (National Transparency Institute)",
+    jurisdiction_display: "Mexico",
+  },
+  KE: {
+    max_fine_fixed: 38_000,      // KES 5M ≈ $38K
+    max_fine_percentage: 0.01,   // 1% turnover
+    fine_basis: "up to KES 5M or 1% annual turnover",
+    criminal_penalties: false,
+    enforcement_body: "Office of the Data Protection Commissioner",
+    jurisdiction_display: "Kenya",
+  },
+  NG: {
+    max_fine_fixed: null,
+    max_fine_percentage: 0.02,   // 2% gross revenue
+    fine_basis: "2% annual gross revenue or NGN 10M",
+    criminal_penalties: false,
+    enforcement_body: "Nigeria Data Protection Commission (NDPC)",
+    jurisdiction_display: "Nigeria",
   },
 };
 

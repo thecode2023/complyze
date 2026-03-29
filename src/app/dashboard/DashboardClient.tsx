@@ -242,8 +242,9 @@ export function DashboardClient({
           const allCodes = [
             "EU", "GB", "US", "US-TX", "US-CO", "US-CA", "US-IL",
             "US-CT", "US-UT", "US-TN", "US-NYC", "US-MD",
-            "CA", "BR", "SG", "ID", "KR", "JP", "CN", "AU", "IN",
-            "SA", "ZA", "INTL",
+            "CA", "BR", "MX", "SG", "ID", "KR", "JP", "CN", "AU", "IN",
+            "TH", "PH", "VN", "TW", "HK",
+            "SA", "ZA", "AE", "IL", "KE", "NG", "INTL",
           ];
           const trackedSet = new Set(profile.jurisdictions);
           const recentSet = new Set(recentUpdateJurisdictions);

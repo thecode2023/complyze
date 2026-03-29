@@ -64,6 +64,16 @@ function isoToJurisdiction(isoNumeric: string): string | null {
     case "356": return "IN";
     case "682": return "SA";
     case "710": return "ZA";
+    case "764": return "TH";
+    case "608": return "PH";
+    case "704": return "VN";
+    case "158": return "TW";
+    case "344": return "HK";
+    case "784": return "AE";
+    case "376": return "IL";
+    case "484": return "MX";
+    case "404": return "KE";
+    case "566": return "NG";
     default: return null;
   }
 }
@@ -96,7 +106,17 @@ const PIN_LOCATIONS: Record<string, { coords: [number, number]; label: string }>
   IN:      { coords: [78.9, 20.6],    label: "IN" },
   SA:      { coords: [45.1, 23.9],    label: "SA" },
   ZA:      { coords: [25.7, -29.0],   label: "ZA" },
-  INTL:    { coords: [2.3, 48.9],     label: "OECD" },
+  TH:      { coords: [100.5, 13.8],   label: "TH" },
+  PH:      { coords: [121.0, 14.6],  label: "PH" },
+  VN:      { coords: [105.8, 21.0],  label: "VN" },
+  TW:      { coords: [121.5, 25.0],  label: "TW" },
+  HK:      { coords: [114.2, 22.3],  label: "HK" },
+  AE:      { coords: [54.4, 24.5],   label: "AE" },
+  IL:      { coords: [35.2, 31.8],   label: "IL" },
+  MX:      { coords: [-99.1, 19.4],  label: "MX" },
+  KE:      { coords: [36.8, -1.3],   label: "KE" },
+  NG:      { coords: [7.5, 9.1],     label: "NG" },
+  INTL:    { coords: [2.3, 48.9],    label: "OECD" },
 };
 
 /* ------------------------------------------------------------------ */
