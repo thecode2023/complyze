@@ -387,6 +387,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       run_id: runId,
       status: "completed",
+      feed_sources: feedResult.sourceCount,
+      feed_sources_from_db: feedResult.fromDatabase,
       feed_items_fetched: feedItems.length,
       feed_errors: feedResult.errors.length,
       api_calls_made: apiCallCount,
