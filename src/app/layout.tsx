@@ -19,11 +19,11 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Complyze — AI Regulatory Intelligence Platform",
   description:
-    "Track 42+ AI regulations across 24 jurisdictions. Audit your AI agent configurations against live regulatory data with zero hallucinated citations.",
+    "Track 74+ AI regulations across 35 jurisdictions. Audit your AI agent configurations against live regulatory data with zero hallucinated citations.",
   openGraph: {
     title: "Complyze — AI Regulatory Intelligence Platform",
     description:
-      "Track 42+ AI regulations across 24 jurisdictions. Audit your AI agent configurations against live regulatory data with zero hallucinated citations.",
+      "Track 74+ AI regulations across 35 jurisdictions. Audit your AI agent configurations against live regulatory data with zero hallucinated citations.",
     url: "https://complyze.dev",
     siteName: "Complyze",
     type: "website",
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Complyze — AI Regulatory Intelligence Platform",
     description:
-      "Track 42+ AI regulations across 24 jurisdictions. Audit your AI agent configurations against live regulatory data with zero hallucinated citations.",
+      "Track 74+ AI regulations across 35 jurisdictions. Audit your AI agent configurations against live regulatory data with zero hallucinated citations.",
   },
 };
 

@@ -131,8 +131,9 @@ export async function POST(request: NextRequest) {
     auditResponse = await callGeminiWithRetry(prompt, 3);
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Unknown error";
+    console.error("Gemini audit call failed:", msg);
     return NextResponse.json(
-      { error: `AI audit engine unavailable: ${msg}` },
+      { error: "The audit engine is temporarily busy. Please try again in a few minutes." },
       { status: 503 }
     );
   }

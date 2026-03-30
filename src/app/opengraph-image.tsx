@@ -27,7 +27,7 @@ export default function OGImage() {
           AI Regulatory Intelligence Platform
         </div>
         <div style={{ display: "flex", fontSize: 20, color: "#94a3b8", gap: 12 }}>
-          42+ Regulations · 24 Jurisdictions · Open Source
+          74+ Regulations · 35 Jurisdictions · Open Source
         </div>
         <div style={{ display: "flex", position: "absolute", bottom: 40, right: 80, fontSize: 16, color: "#3b82f6" }}>
           complyze.dev
