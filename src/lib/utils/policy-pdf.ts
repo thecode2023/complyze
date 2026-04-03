@@ -49,14 +49,16 @@ function parseMarkdownToElements(markdown: string): ParsedElement[] {
       continue;
     }
 
-    // Table detection
-    if (line.includes("|") && i + 1 < lines.length && lines[i + 1].trim().match(/^\|[\s\-:|]+\|$/)) {
+    // Table detection — handles both `| col | col |` and `col | col` formats
+    if (line.includes("|") && i + 1 < lines.length && lines[i + 1].trim().match(/^[\s\-:|]+$/)) {
       const headerCells = line.split("|").map((c) => stripMarkdown(c)).filter(Boolean);
       i += 2;
       const rows: string[][] = [];
-      while (i < lines.length && lines[i].trim().includes("|") && lines[i].trim().startsWith("|")) {
-        const row = lines[i].split("|").map((c) => stripMarkdown(c)).filter(Boolean);
-        rows.push(row);
+      while (i < lines.length && lines[i].trim().includes("|")) {
+        const trimmed = lines[i].trim();
+        if (!trimmed || trimmed.match(/^[\s\-:|]+$/)) { i++; continue; }
+        const row = trimmed.split("|").map((c) => stripMarkdown(c)).filter(Boolean);
+        if (row.length > 0) rows.push(row);
         i++;
       }
       elements.push({ type: "table", content: "", headers: headerCells, rows });

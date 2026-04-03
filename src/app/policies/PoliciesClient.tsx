@@ -10,9 +10,9 @@ import {
   Loader2,
   Search,
   Trash2,
-  Check,
   Sparkles,
   Download,
+  X,
 } from "lucide-react";
 import { Markdown } from "@/components/Markdown";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -64,6 +64,8 @@ export function PoliciesClient({
   const [orgDetails, setOrgDetails] = useState("");
   const [generating, setGenerating] = useState(false);
   const [regSearch, setRegSearch] = useState("");
+  const [regRegion, setRegRegion] = useState("all");
+  const [regCategory, setRegCategory] = useState("all");
 
   // Company context state
   const [companyName, setCompanyName] = useState(userOrganization);
@@ -81,11 +83,28 @@ export function PoliciesClient({
   const [editorTab, setEditorTab] = useState<"edit" | "preview">("edit");
   const [generatingPdf, setGeneratingPdf] = useState(false);
 
-  const filteredRegulations = regulations.filter(
-    (r) =>
+  const getRegion = (jurisdiction: string): string => {
+    if (["EU", "GB"].some((c) => jurisdiction.startsWith(c))) return "Europe";
+    if (["US", "CA"].some((c) => jurisdiction.startsWith(c))) return "North America";
+    if (["CN", "JP", "KR", "SG", "AU", "IN", "ID", "TH", "VN", "PH", "HK", "TW"].some((c) => jurisdiction.startsWith(c))) return "Asia-Pacific";
+    if (["BR", "MX"].some((c) => jurisdiction.startsWith(c))) return "Latin America";
+    if (["SA", "AE", "IL", "NG", "KE", "ZA"].some((c) => jurisdiction.startsWith(c))) return "Middle East & Africa";
+    if (["INTL", "OECD", "G7", "ISO", "IEEE", "WHO"].some((c) => jurisdiction.startsWith(c))) return "International";
+    return "Other";
+  };
+
+  const REGION_TABS = ["All", "Europe", "North America", "Asia-Pacific", "Latin America", "Middle East & Africa", "International"];
+  const CATEGORY_OPTIONS = ["All", "legislation", "framework", "guidance", "standard", "executive_order"];
+
+  const filteredRegulations = regulations.filter((r) => {
+    const matchesSearch =
+      !regSearch ||
       r.title.toLowerCase().includes(regSearch.toLowerCase()) ||
-      r.jurisdiction_display?.toLowerCase().includes(regSearch.toLowerCase())
-  );
+      r.jurisdiction_display?.toLowerCase().includes(regSearch.toLowerCase());
+    const matchesRegion = regRegion === "all" || getRegion(r.jurisdiction) === regRegion;
+    const matchesCategory = regCategory === "all" || r.category === regCategory;
+    return matchesSearch && matchesRegion && matchesCategory;
+  });
 
   const toggleRegulation = (id: string) => {
     setSelectedRegIds((prev) =>
@@ -403,46 +422,138 @@ export function PoliciesClient({
             </select>
           </div>
 
-          {/* Regulations */}
+          {/* Regulations Picker */}
           <div>
-            <label className="text-sm font-medium mb-2 block">
+            <label className="text-sm font-medium mb-3 block">
               Source Regulations <span className="text-destructive">*</span>
-              {selectedRegIds.length > 0 && (
-                <span className="ml-2 text-xs text-muted-foreground font-normal">{selectedRegIds.length} selected</span>
-              )}
             </label>
-            <div className="relative mb-2">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <input
-                type="text"
-                value={regSearch}
-                onChange={(e) => setRegSearch(e.target.value)}
-                placeholder="Search regulations..."
-                className="w-full h-9 pl-9 pr-3 rounded-md border border-input bg-transparent text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              />
+
+            {/* Selected chips */}
+            {selectedRegIds.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs font-medium text-muted-foreground mb-2">
+                  Selected ({selectedRegIds.length})
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedRegIds.map((id) => {
+                    const reg = regulations.find((r) => r.id === id);
+                    if (!reg) return null;
+                    return (
+                      <span
+                        key={id}
+                        className="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 text-xs rounded-full bg-primary/15 text-primary border border-primary/30"
+                      >
+                        {reg.title.length > 40 ? reg.title.slice(0, 40) + "..." : reg.title}
+                        <button
+                          onClick={() => toggleRegulation(id)}
+                          className="p-0.5 rounded-full hover:bg-primary/20 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Region tabs */}
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {REGION_TABS.map((region) => (
+                <button
+                  key={region}
+                  onClick={() => setRegRegion(region === "All" ? "all" : region)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
+                    (region === "All" ? "all" : region) === regRegion
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+                  }`}
+                >
+                  {region}
+                </button>
+              ))}
             </div>
-            <div className="border border-border rounded-md max-h-[240px] overflow-y-auto divide-y divide-border">
-              {filteredRegulations.map((reg) => {
-                const selected = selectedRegIds.includes(reg.id);
-                return (
-                  <button
-                    key={reg.id}
-                    onClick={() => toggleRegulation(reg.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/50 ${selected ? "bg-primary/5" : ""}`}
-                  >
-                    <div className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center transition-colors ${selected ? "bg-primary border-primary" : "border-input"}`}>
-                      {selected && <Check className="w-3 h-3 text-primary-foreground" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate font-medium">{reg.title}</p>
-                      <p className="text-xs text-muted-foreground">{reg.jurisdiction_display} &middot; {reg.status}</p>
-                    </div>
-                  </button>
-                );
-              })}
+
+            {/* Search + Category filter row */}
+            <div className="flex gap-2 mb-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={regSearch}
+                  onChange={(e) => setRegSearch(e.target.value)}
+                  placeholder="Search regulations..."
+                  className="w-full h-9 pl-9 pr-3 rounded-md border border-input bg-transparent text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+              <select
+                value={regCategory}
+                onChange={(e) => setRegCategory(e.target.value)}
+                className="h-9 rounded-md border border-input bg-transparent px-3 text-xs shrink-0"
+              >
+                {CATEGORY_OPTIONS.map((cat) => (
+                  <option key={cat} value={cat === "All" ? "all" : cat}>
+                    {cat === "All" ? "All Categories" : cat.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Regulation card grid */}
+            <div className="border border-border rounded-lg overflow-hidden">
+              <div className="max-h-[420px] overflow-y-auto p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {filteredRegulations.map((reg) => {
+                  const selected = selectedRegIds.includes(reg.id);
+                  const statusColors: Record<string, string> = {
+                    enacted: "bg-green-500/15 text-green-400",
+                    in_effect: "bg-green-500/15 text-green-400",
+                    proposed: "bg-amber-500/15 text-amber-400",
+                    under_review: "bg-blue-500/15 text-blue-400",
+                    repealed: "bg-gray-500/15 text-gray-400",
+                  };
+                  const catColors: Record<string, string> = {
+                    legislation: "bg-indigo-500/15 text-indigo-400",
+                    executive_order: "bg-purple-500/15 text-purple-400",
+                    framework: "bg-cyan-500/15 text-cyan-400",
+                    guidance: "bg-teal-500/15 text-teal-400",
+                    standard: "bg-orange-500/15 text-orange-400",
+                  };
+                  return (
+                    <button
+                      key={reg.id}
+                      onClick={() => toggleRegulation(reg.id)}
+                      className={`text-left p-3 rounded-lg border-2 transition-all hover:bg-muted/30 ${
+                        selected
+                          ? "border-primary bg-primary/5 shadow-sm shadow-primary/10"
+                          : "border-transparent bg-card hover:border-border"
+                      }`}
+                    >
+                      <p className="text-sm font-medium leading-snug line-clamp-2 mb-2">
+                        {reg.title}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        <span className="inline-block px-2 py-0.5 text-[10px] font-medium rounded-full bg-muted text-muted-foreground">
+                          {reg.jurisdiction_display}
+                        </span>
+                        <span className={`inline-block px-2 py-0.5 text-[10px] font-medium rounded-full ${statusColors[reg.status] || "bg-muted text-muted-foreground"}`}>
+                          {reg.status.replace("_", " ")}
+                        </span>
+                        <span className={`inline-block px-2 py-0.5 text-[10px] font-medium rounded-full ${catColors[reg.category] || "bg-muted text-muted-foreground"}`}>
+                          {reg.category.replace("_", " ")}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
               {filteredRegulations.length === 0 && (
-                <p className="px-3 py-4 text-sm text-muted-foreground text-center">No regulations match your search</p>
+                <p className="px-3 py-8 text-sm text-muted-foreground text-center">
+                  No regulations match your filters
+                </p>
               )}
+              <div className="border-t border-border px-3 py-2 text-xs text-muted-foreground bg-card/50">
+                {filteredRegulations.length} regulation{filteredRegulations.length !== 1 ? "s" : ""} shown
+              </div>
             </div>
           </div>
 
