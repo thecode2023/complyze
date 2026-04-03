@@ -6,6 +6,7 @@ import { useSetChatContext } from "@/components/chat/ChatContext";
 import { DeadlineCountdown } from "@/components/dashboard/DeadlineCountdown";
 import { ActionItems, type ActionItem } from "@/components/dashboard/ActionItems";
 import { PolicyCoverage } from "@/components/dashboard/PolicyCoverage";
+import { OnboardingNudges } from "@/components/dashboard/OnboardingNudges";
 import type { CoverageReport } from "@/lib/utils/policy-coverage";
 import { format } from "date-fns";
 import {
@@ -65,6 +66,9 @@ interface DashboardClientProps {
   deadlines?: { regulation_id: string; title: string; jurisdiction_display: string; effective_date: string; days_remaining: number; readiness: number }[];
   actionItems?: ActionItem[];
   coverage?: CoverageReport;
+  hasAudit?: boolean;
+  hasPolicies?: boolean;
+  hasChats?: boolean;
 }
 
 export function DashboardClient({
@@ -86,6 +90,9 @@ export function DashboardClient({
   deadlines,
   actionItems,
   coverage,
+  hasAudit,
+  hasPolicies,
+  hasChats,
 }: DashboardClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -164,6 +171,15 @@ export function DashboardClient({
       {/* ============================================================= */}
       {/* Action Items */}
       {actionItems && <ActionItems items={actionItems} />}
+
+      {/* Onboarding Nudges */}
+      {(hasAudit !== undefined) && (
+        <OnboardingNudges
+          hasAudit={hasAudit ?? false}
+          hasPolicies={hasPolicies ?? false}
+          hasChats={hasChats ?? false}
+        />
+      )}
 
       {/* 1. Compliance Overview Bar                                     */}
       {/* ============================================================= */}

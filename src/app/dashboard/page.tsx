@@ -233,6 +233,12 @@ export default async function DashboardPage() {
     }
   });
 
+  // Nudge card data: check if user has completed key actions
+  const [{ count: policyCount }, { count: chatCount }] = await Promise.all([
+    supabase.from("policy_documents").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+    supabase.from("chat_sessions").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+  ]);
+
   // Count pending regulations awaiting review
   const { count: pendingCount } = await supabase
     .from("pending_regulations")
@@ -443,6 +449,9 @@ export default async function DashboardPage() {
       deadlines={deadlines}
       actionItems={actionItems}
       coverage={coverage}
+      hasAudit={(auditReports?.length || 0) > 0}
+      hasPolicies={(policyCount || 0) > 0}
+      hasChats={(chatCount || 0) > 0}
     />
   );
 }
