@@ -15,7 +15,6 @@ export default async function PoliciesPage() {
     redirect("/auth/signin");
   }
 
-  // Fetch user profile
   const { data: profile } = await supabase
     .from("user_profiles")
     .select("*")
@@ -26,13 +25,11 @@ export default async function PoliciesPage() {
     redirect("/dashboard/onboarding");
   }
 
-  // Fetch regulations for the generator dropdown
   const { data: regulations } = await supabase
     .from("regulations")
     .select("id, title, jurisdiction, jurisdiction_display, status, category")
     .order("title");
 
-  // Fetch user's saved policies
   const { data: policies } = await supabase
     .from("policy_documents")
     .select("*")
@@ -44,6 +41,9 @@ export default async function PoliciesPage() {
       regulations={(regulations as Regulation[]) || []}
       policies={(policies as PolicyDocument[]) || []}
       userIndustry={profile.industry || ""}
+      userAiUseCases={(profile.ai_use_cases as string[]) || []}
+      userJurisdictions={(profile.jurisdictions as string[]) || []}
+      userOrganization={(profile.organization as string) || ""}
     />
   );
 }

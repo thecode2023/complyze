@@ -17,15 +17,28 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { regulation_ids, policy_type, industry, organization_details } =
-      body as {
-        regulation_ids: string[];
-        policy_type: string;
-        industry: string;
-        organization_details?: string;
-      };
+    const {
+      regulation_ids,
+      policy_type,
+      industry,
+      organization_details,
+      company_name,
+      company_size,
+      ai_use_cases,
+      geographic_operations,
+      stakeholders,
+    } = body as {
+      regulation_ids: string[];
+      policy_type: string;
+      industry: string;
+      organization_details?: string;
+      company_name?: string;
+      company_size?: string;
+      ai_use_cases?: string[];
+      geographic_operations?: string[];
+      stakeholders?: string;
+    };
 
-    // Validate
     if (!regulation_ids || regulation_ids.length === 0) {
       return NextResponse.json(
         { error: "At least one regulation must be selected" },
@@ -47,7 +60,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch full regulation data
     const { data: regulations, error: regError } = await supabase
       .from("regulations")
       .select("*")
@@ -60,22 +72,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find the policy type label for the prompt
     const policyTypeLabel =
       POLICY_TYPE_OPTIONS.find((o) => o.value === policy_type)?.label ||
       policy_type;
 
-    // Build prompt and generate
     const prompt = buildGeneratePolicyPrompt({
       regulations: regulations as Regulation[],
       policyType: policyTypeLabel,
       industry,
+      companyName: company_name,
+      companySize: company_size,
+      aiUseCases: ai_use_cases,
+      geographicOperations: geographic_operations,
+      stakeholders,
       organizationDetails: organization_details,
     });
 
     const content_markdown = await callGeminiWithRetry(prompt);
 
-    // Generate a title from the policy type and first regulation
     const title = `${policyTypeLabel} — ${regulations[0].title}${regulations.length > 1 ? ` (+${regulations.length - 1} more)` : ""}`;
 
     return NextResponse.json({ content_markdown, title });

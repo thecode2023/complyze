@@ -11,8 +11,7 @@ import {
   Trash2,
   Sparkles,
 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { Markdown } from "@/components/Markdown";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useChat } from "@/hooks/useChat";
 import type { Citation } from "@/lib/types/chat";
@@ -21,7 +20,7 @@ const STARTER_QUESTIONS = [
   "What are the EU AI Act penalties for non-compliance?",
   "Which regulations require human oversight of AI decisions?",
   "Compare US and EU requirements for AI transparency",
-  "What are the deadlines I should track this quarter?",
+  "How do my saved policies align with current regulations?",
 ];
 
 function CitationChips({ citations }: { citations: Citation[] }) {
@@ -269,7 +268,7 @@ export function ChatWidget() {
                             <>
                               {msg.content ? (
                                 <div className="prose prose-sm prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:my-1.5 [&_ul]:my-1.5 [&_ol]:my-1.5 [&_li]:my-0.5 [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm [&_code]:text-xs [&_pre]:text-xs">
-                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                                  <Markdown>{msg.content}</Markdown>
                                 </div>
                               ) : isStreaming ? (
                                 <TypingIndicator />

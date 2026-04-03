@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerComponentClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { semanticSearch, type SearchResult } from "@/lib/ai/search";
-import { buildChatRAGPrompt } from "@/lib/ai/prompts/chat-rag";
+import {
+  buildChatRAGPrompt,
+  type PolicyContext,
+} from "@/lib/ai/prompts/chat-rag";
 import { geminiModel } from "@/lib/ai/client";
 import type { Citation } from "@/lib/types/chat";
 import type { UserProfile } from "@/lib/types/user";
@@ -16,7 +19,6 @@ function extractCitations(
 
   for (const chunk of chunks) {
     if (seen.has(chunk.regulation_id)) continue;
-    // Check if the regulation title is referenced in the response
     if (
       responseText.toLowerCase().includes(chunk.title.toLowerCase()) ||
       responseText.includes(chunk.source_url)
@@ -35,9 +37,39 @@ function extractCitations(
   return citations;
 }
 
+// Extract keywords from message for policy search
+function extractSearchKeywords(message: string): string[] {
+  const stopWords = new Set([
+    "my", "our", "the", "a", "an", "is", "are", "was", "were", "be", "been",
+    "being", "have", "has", "had", "do", "does", "did", "will", "would",
+    "could", "should", "may", "might", "can", "shall", "to", "of", "in",
+    "for", "on", "with", "at", "by", "from", "about", "how", "what", "which",
+    "that", "this", "it", "and", "or", "but", "if", "not", "no", "all",
+    "any", "does", "i", "me", "we", "they", "you", "your",
+  ]);
+
+  return message
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !stopWords.has(w));
+}
+
+function mentionsPolicies(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("policy") ||
+    lower.includes("policies") ||
+    lower.includes("my polic") ||
+    lower.includes("our polic") ||
+    lower.includes("saved polic") ||
+    lower.includes("draft") ||
+    lower.includes("policy document")
+  );
+}
+
 export async function POST(request: NextRequest) {
   try {
-    // Auth check
     const supabase = await createServerComponentClient();
     const {
       data: { user },
@@ -66,7 +98,6 @@ export async function POST(request: NextRequest) {
 
     // Session management
     if (activeSessionId) {
-      // Verify session belongs to user
       const { data: session, error: sessionError } = await supabase
         .from("chat_sessions")
         .select("id")
@@ -81,7 +112,6 @@ export async function POST(request: NextRequest) {
         );
       }
     } else {
-      // Create new session
       const title = message.slice(0, 80).trim();
       const { data: newSession, error: createError } = await adminClient
         .from("chat_sessions")
@@ -114,7 +144,7 @@ export async function POST(request: NextRequest) {
       .order("created_at", { ascending: true })
       .limit(20);
 
-    // Semantic search for relevant context
+    // Semantic search for relevant regulation context
     let searchResults: SearchResult[] = [];
     try {
       searchResults = await semanticSearch(message, {
@@ -124,7 +154,77 @@ export async function POST(request: NextRequest) {
       });
     } catch (searchError) {
       console.error("[chat] Semantic search failed:", searchError);
-      // Continue without context — the prompt handles empty context
+    }
+
+    // Search user's policy documents if the message mentions policies
+    let userPolicies: PolicyContext[] = [];
+    if (mentionsPolicies(message)) {
+      try {
+        const keywords = extractSearchKeywords(message);
+        // Build ILIKE conditions for keyword matching
+        let query = supabase
+          .from("policy_documents")
+          .select("title, status, updated_at, content_markdown")
+          .eq("user_id", user.id)
+          .order("updated_at", { ascending: false })
+          .limit(3);
+
+        // If we have specific keywords beyond "policy", search for them
+        const contentKeywords = keywords.filter(
+          (k) => !["policy", "policies", "document", "documents", "saved", "draft"].includes(k)
+        );
+        if (contentKeywords.length > 0) {
+          // Search title and content for the most specific keyword
+          const searchTerm = `%${contentKeywords[0]}%`;
+          query = query.or(
+            `title.ilike.${searchTerm},content_markdown.ilike.${searchTerm}`
+          );
+        }
+
+        const { data: policies } = await query;
+
+        if (policies && policies.length > 0) {
+          userPolicies = policies.map(
+            (p: {
+              title: string;
+              status: string;
+              updated_at: string;
+              content_markdown: string;
+            }) => ({
+              title: p.title,
+              status: p.status,
+              updated_at: p.updated_at,
+              excerpt: p.content_markdown.slice(0, 2000),
+            })
+          );
+        } else {
+          // No keyword match — fetch most recent policies as fallback
+          const { data: recentPolicies } = await supabase
+            .from("policy_documents")
+            .select("title, status, updated_at, content_markdown")
+            .eq("user_id", user.id)
+            .order("updated_at", { ascending: false })
+            .limit(3);
+
+          if (recentPolicies && recentPolicies.length > 0) {
+            userPolicies = recentPolicies.map(
+              (p: {
+                title: string;
+                status: string;
+                updated_at: string;
+                content_markdown: string;
+              }) => ({
+                title: p.title,
+                status: p.status,
+                updated_at: p.updated_at,
+                excerpt: p.content_markdown.slice(0, 2000),
+              })
+            );
+          }
+        }
+      } catch (policyError) {
+        console.error("[chat] Policy search failed:", policyError);
+      }
     }
 
     // Fetch user profile
@@ -143,6 +243,7 @@ export async function POST(request: NextRequest) {
         content: string;
       }[],
       userMessage: message,
+      userPolicies: userPolicies.length > 0 ? userPolicies : undefined,
     });
 
     // Stream response from Gemini
@@ -166,10 +267,8 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Extract citations
           const citations = extractCitations(fullResponse, searchResults);
 
-          // Send final chunk with citations and session ID
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({
@@ -181,7 +280,6 @@ export async function POST(request: NextRequest) {
             )
           );
 
-          // Store assistant message (fire and forget)
           adminClient
             .from("chat_messages")
             .insert({
@@ -195,7 +293,6 @@ export async function POST(request: NextRequest) {
                 console.error("[chat] Failed to store assistant message:", error);
             });
 
-          // Update session
           adminClient
             .from("chat_sessions")
             .update({

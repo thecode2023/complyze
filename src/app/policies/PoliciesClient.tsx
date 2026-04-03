@@ -12,9 +12,9 @@ import {
   Trash2,
   Check,
   Sparkles,
+  Download,
 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { Markdown } from "@/components/Markdown";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -24,13 +24,23 @@ import {
   type PolicyDocument,
   type PolicyStatus,
 } from "@/lib/types/policy";
-import { INDUSTRY_OPTIONS } from "@/lib/types/user";
+import { INDUSTRY_OPTIONS, AI_USE_CASE_OPTIONS } from "@/lib/types/user";
 import type { Regulation } from "@/lib/types/regulation";
+
+const COMPANY_SIZE_OPTIONS = [
+  { value: "startup", label: "Startup (<50 employees)" },
+  { value: "smb", label: "SMB (50–500 employees)" },
+  { value: "enterprise", label: "Enterprise (500–5,000 employees)" },
+  { value: "large_enterprise", label: "Large Enterprise (5,000+ employees)" },
+];
 
 interface PoliciesClientProps {
   regulations: Regulation[];
   policies: PolicyDocument[];
   userIndustry: string;
+  userAiUseCases: string[];
+  userJurisdictions: string[];
+  userOrganization: string;
 }
 
 type View = "list" | "editor";
@@ -39,8 +49,10 @@ export function PoliciesClient({
   regulations,
   policies: initialPolicies,
   userIndustry,
+  userAiUseCases,
+  userJurisdictions,
+  userOrganization,
 }: PoliciesClientProps) {
-  // State
   const [policies, setPolicies] = useState(initialPolicies);
   const [view, setView] = useState<View>("list");
   const [activeTab, setActiveTab] = useState("generate");
@@ -53,6 +65,13 @@ export function PoliciesClient({
   const [generating, setGenerating] = useState(false);
   const [regSearch, setRegSearch] = useState("");
 
+  // Company context state
+  const [companyName, setCompanyName] = useState(userOrganization);
+  const [companySize, setCompanySize] = useState("");
+  const [aiUseCases, setAiUseCases] = useState<string[]>(userAiUseCases);
+  const [geoOperations, setGeoOperations] = useState<string[]>(userJurisdictions);
+  const [stakeholders, setStakeholders] = useState("");
+
   // Editor state
   const [editingPolicy, setEditingPolicy] = useState<PolicyDocument | null>(null);
   const [editorContent, setEditorContent] = useState("");
@@ -60,8 +79,8 @@ export function PoliciesClient({
   const [editorStatus, setEditorStatus] = useState<PolicyStatus>("draft");
   const [saving, setSaving] = useState(false);
   const [editorTab, setEditorTab] = useState<"edit" | "preview">("edit");
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
-  // Filter regulations by search
   const filteredRegulations = regulations.filter(
     (r) =>
       r.title.toLowerCase().includes(regSearch.toLowerCase()) ||
@@ -71,6 +90,18 @@ export function PoliciesClient({
   const toggleRegulation = (id: string) => {
     setSelectedRegIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const toggleAiUseCase = (value: string) => {
+    setAiUseCases((prev) =>
+      prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]
+    );
+  };
+
+  const toggleGeo = (value: string) => {
+    setGeoOperations((prev) =>
+      prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]
     );
   };
 
@@ -88,6 +119,11 @@ export function PoliciesClient({
           policy_type: policyType,
           industry,
           organization_details: orgDetails || undefined,
+          company_name: companyName || undefined,
+          company_size: companySize || undefined,
+          ai_use_cases: aiUseCases.length > 0 ? aiUseCases : undefined,
+          geographic_operations: geoOperations.length > 0 ? geoOperations : undefined,
+          stakeholders: stakeholders || undefined,
         }),
       });
 
@@ -110,7 +146,7 @@ export function PoliciesClient({
     } finally {
       setGenerating(false);
     }
-  }, [selectedRegIds, policyType, industry, orgDetails]);
+  }, [selectedRegIds, policyType, industry, orgDetails, companyName, companySize, aiUseCases, geoOperations, stakeholders]);
 
   // Save policy
   const handleSave = useCallback(async () => {
@@ -119,7 +155,6 @@ export function PoliciesClient({
 
     try {
       if (editingPolicy) {
-        // Update existing
         const res = await fetch("/api/policies", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -130,19 +165,13 @@ export function PoliciesClient({
             status: editorStatus,
           }),
         });
-
         if (!res.ok) throw new Error("Failed to update policy");
         const updated = await res.json();
-        setPolicies((prev) =>
-          prev.map((p) => (p.id === updated.id ? updated : p))
-        );
+        setPolicies((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
         setEditingPolicy(updated);
         toast.success("Policy updated");
       } else {
-        // Create new
-        const selectedRegs = regulations.filter((r) =>
-          selectedRegIds.includes(r.id)
-        );
+        const selectedRegs = regulations.filter((r) => selectedRegIds.includes(r.id));
         const res = await fetch("/api/policies", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -151,13 +180,10 @@ export function PoliciesClient({
             content_markdown: editorContent,
             regulation_id: selectedRegIds[0] || null,
             industry,
-            jurisdictions: [
-              ...new Set(selectedRegs.map((r) => r.jurisdiction)),
-            ],
-            metadata: { policy_type: policyType },
+            jurisdictions: [...new Set(selectedRegs.map((r) => r.jurisdiction))],
+            metadata: { policy_type: policyType, company_name: companyName },
           }),
         });
-
         if (!res.ok) throw new Error("Failed to save policy");
         const created = await res.json();
         setPolicies((prev) => [created, ...prev]);
@@ -165,28 +191,32 @@ export function PoliciesClient({
         toast.success("Policy saved");
       }
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to save"
-      );
+      toast.error(error instanceof Error ? error.message : "Failed to save");
     } finally {
       setSaving(false);
     }
-  }, [
-    editingPolicy,
-    editorTitle,
-    editorContent,
-    editorStatus,
-    selectedRegIds,
-    regulations,
-    industry,
-    policyType,
-  ]);
+  }, [editingPolicy, editorTitle, editorContent, editorStatus, selectedRegIds, regulations, industry, policyType, companyName]);
+
+  // Download PDF
+  const handleDownloadPDF = useCallback(async () => {
+    setGeneratingPdf(true);
+    try {
+      const { generatePolicyPDF } = await import("@/lib/utils/policy-pdf");
+      const doc = generatePolicyPDF(editorContent, editorTitle, companyName || undefined);
+      doc.save(`${editorTitle.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 60)}.pdf`);
+      toast.success("PDF downloaded");
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      toast.error("Failed to generate PDF");
+    } finally {
+      setGeneratingPdf(false);
+    }
+  }, [editorContent, editorTitle, companyName]);
 
   // Delete policy
   const handleDelete = useCallback(
     async (id: string) => {
       if (!confirm("Delete this policy? This cannot be undone.")) return;
-
       try {
         const res = await fetch(`/api/policies?id=${id}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to delete");
@@ -203,34 +233,31 @@ export function PoliciesClient({
     [editingPolicy]
   );
 
-  // Copy markdown
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(editorContent);
     toast.success("Markdown copied to clipboard");
   }, [editorContent]);
 
-  // Open existing policy in editor
   const openPolicy = (policy: PolicyDocument) => {
     setEditingPolicy(policy);
     setEditorContent(policy.content_markdown);
     setEditorTitle(policy.title);
     setEditorStatus(policy.status);
+    // Restore company name from metadata if available
+    const meta = policy.metadata as Record<string, string> | null;
+    if (meta?.company_name) setCompanyName(meta.company_name);
     setView("editor");
   };
 
-  // Back to list
   const backToList = () => {
     setView("list");
     setEditingPolicy(null);
   };
 
-  // Get status badge
   const getStatusBadge = (status: PolicyStatus) => {
     const opt = STATUS_OPTIONS.find((s) => s.value === status);
     return (
-      <span
-        className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${opt?.color || ""}`}
-      >
+      <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${opt?.color || ""}`}>
         {opt?.label || status}
       </span>
     );
@@ -261,15 +288,27 @@ export function PoliciesClient({
             className="h-8 rounded-md border border-input bg-transparent px-2 text-xs"
           >
             {STATUS_OPTIONS.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
+              <option key={s.value} value={s.value}>{s.label}</option>
             ))}
           </select>
 
           <Button variant="outline" size="sm" onClick={handleCopy}>
             <Copy className="w-3.5 h-3.5 mr-1" />
             Copy
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadPDF}
+            disabled={generatingPdf || !editorContent}
+          >
+            {generatingPdf ? (
+              <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+            ) : (
+              <Download className="w-3.5 h-3.5 mr-1" />
+            )}
+            PDF
           </Button>
 
           <Button size="sm" onClick={handleSave} disabled={saving}>
@@ -286,21 +325,13 @@ export function PoliciesClient({
         <div className="md:hidden border-b border-border px-4 py-2 flex gap-2 shrink-0">
           <button
             onClick={() => setEditorTab("edit")}
-            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-              editorTab === "edit"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
+            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${editorTab === "edit" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             Edit
           </button>
           <button
             onClick={() => setEditorTab("preview")}
-            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-              editorTab === "preview"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
+            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${editorTab === "preview" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             Preview
           </button>
@@ -308,15 +339,8 @@ export function PoliciesClient({
 
         {/* Split pane */}
         <div className="flex-1 overflow-hidden md:grid md:grid-cols-2 md:divide-x md:divide-border">
-          {/* Editor pane */}
-          <div
-            className={`h-full overflow-hidden flex flex-col ${
-              editorTab !== "edit" ? "hidden md:flex" : "flex"
-            }`}
-          >
-            <div className="px-3 py-2 text-xs text-muted-foreground border-b border-border shrink-0">
-              Markdown
-            </div>
+          <div className={`h-full overflow-hidden flex flex-col ${editorTab !== "edit" ? "hidden md:flex" : "flex"}`}>
+            <div className="px-3 py-2 text-xs text-muted-foreground border-b border-border shrink-0">Markdown</div>
             <textarea
               value={editorContent}
               onChange={(e) => setEditorContent(e.target.value)}
@@ -324,18 +348,10 @@ export function PoliciesClient({
               spellCheck={false}
             />
           </div>
-
-          {/* Preview pane */}
-          <div
-            className={`h-full overflow-auto ${
-              editorTab !== "preview" ? "hidden md:block" : "block"
-            }`}
-          >
-            <div className="px-3 py-2 text-xs text-muted-foreground border-b border-border sticky top-0 bg-card z-10">
-              Preview
-            </div>
+          <div className={`h-full overflow-auto ${editorTab !== "preview" ? "hidden md:block" : "block"}`}>
+            <div className="px-3 py-2 text-xs text-muted-foreground border-b border-border sticky top-0 bg-card z-10">Preview</div>
             <div className="p-6 prose prose-sm prose-invert max-w-none [&>h1]:text-xl [&>h2]:text-lg [&>h3]:text-base [&_table]:text-xs [&_th]:px-3 [&_th]:py-1.5 [&_td]:px-3 [&_td]:py-1.5 [&_table]:border [&_th]:border [&_td]:border [&_th]:border-border [&_td]:border-border [&_th]:bg-muted/50">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{editorContent || "*No content yet*"}</ReactMarkdown>
+              <Markdown>{editorContent || "*No content yet*"}</Markdown>
             </div>
           </div>
         </div>
@@ -349,8 +365,7 @@ export function PoliciesClient({
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight">Policy Generator</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Generate compliance policies from regulatory requirements, tailored to
-          your industry.
+          Generate compliance policies from regulatory requirements, tailored to your company.
         </p>
       </div>
 
@@ -364,9 +379,7 @@ export function PoliciesClient({
             <FileText className="w-3.5 h-3.5 mr-1.5" />
             My Policies
             {policies.length > 0 && (
-              <span className="ml-1.5 text-xs bg-muted px-1.5 py-0.5 rounded-full">
-                {policies.length}
-              </span>
+              <span className="ml-1.5 text-xs bg-muted px-1.5 py-0.5 rounded-full">{policies.length}</span>
             )}
           </TabsTrigger>
         </TabsList>
@@ -385,9 +398,7 @@ export function PoliciesClient({
             >
               <option value="">Select policy type...</option>
               {POLICY_TYPE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
           </div>
@@ -397,9 +408,7 @@ export function PoliciesClient({
             <label className="text-sm font-medium mb-2 block">
               Source Regulations <span className="text-destructive">*</span>
               {selectedRegIds.length > 0 && (
-                <span className="ml-2 text-xs text-muted-foreground font-normal">
-                  {selectedRegIds.length} selected
-                </span>
+                <span className="ml-2 text-xs text-muted-foreground font-normal">{selectedRegIds.length} selected</span>
               )}
             </label>
             <div className="relative mb-2">
@@ -419,83 +428,167 @@ export function PoliciesClient({
                   <button
                     key={reg.id}
                     onClick={() => toggleRegulation(reg.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/50 ${
-                      selected ? "bg-primary/5" : ""
-                    }`}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/50 ${selected ? "bg-primary/5" : ""}`}
                   >
-                    <div
-                      className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center transition-colors ${
-                        selected
-                          ? "bg-primary border-primary"
-                          : "border-input"
-                      }`}
-                    >
-                      {selected && (
-                        <Check className="w-3 h-3 text-primary-foreground" />
-                      )}
+                    <div className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center transition-colors ${selected ? "bg-primary border-primary" : "border-input"}`}>
+                      {selected && <Check className="w-3 h-3 text-primary-foreground" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="truncate font-medium">{reg.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {reg.jurisdiction_display} &middot; {reg.status}
-                      </p>
+                      <p className="text-xs text-muted-foreground">{reg.jurisdiction_display} &middot; {reg.status}</p>
                     </div>
                   </button>
                 );
               })}
               {filteredRegulations.length === 0 && (
-                <p className="px-3 py-4 text-sm text-muted-foreground text-center">
-                  No regulations match your search
-                </p>
+                <p className="px-3 py-4 text-sm text-muted-foreground text-center">No regulations match your search</p>
               )}
             </div>
           </div>
 
-          {/* Industry */}
-          <div>
-            <label className="text-sm font-medium mb-2 block">
-              Industry <span className="text-destructive">*</span>
-            </label>
-            <select
-              value={industry}
-              onChange={(e) => setIndustry(e.target.value)}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-              <option value="">Select industry...</option>
-              {INDUSTRY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* ── COMPANY CONTEXT SECTION ── */}
+          <div className="border border-border rounded-lg p-5 space-y-5">
+            <h3 className="text-sm font-semibold text-foreground">Company Context</h3>
 
-          {/* Organization Details */}
-          <div>
-            <label className="text-sm font-medium mb-2 block">
-              Organization Details{" "}
-              <span className="text-xs text-muted-foreground font-normal">
-                (optional)
-              </span>
-            </label>
-            <textarea
-              value={orgDetails}
-              onChange={(e) => setOrgDetails(e.target.value)}
-              placeholder="Company name, department, additional context..."
-              rows={3}
-              className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
-            />
+            {/* Company Name */}
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Company Name</label>
+              <input
+                type="text"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="Acme Corp"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Replaces [COMPANY NAME] placeholders in the generated policy.</p>
+            </div>
+
+            {/* Industry (already exists) */}
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">
+                Industry <span className="text-destructive">*</span>
+              </label>
+              <select
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="">Select industry...</option>
+                {INDUSTRY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Company Size */}
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Company Size</label>
+              <select
+                value={companySize}
+                onChange={(e) => setCompanySize(e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="">Select size...</option>
+                {COMPANY_SIZE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">Scales governance complexity to match your organization.</p>
+            </div>
+
+            {/* AI Use Cases */}
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">
+                AI Use Cases
+                {aiUseCases.length > 0 && (
+                  <span className="ml-2 text-xs text-muted-foreground font-normal">{aiUseCases.length} selected</span>
+                )}
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {AI_USE_CASE_OPTIONS.map((opt) => {
+                  const active = aiUseCases.includes(opt.value);
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => toggleAiUseCase(opt.value)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                        active
+                          ? "bg-primary/10 border-primary/40 text-primary"
+                          : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                      }`}
+                    >
+                      <span>{opt.icon}</span>
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Geographic Operations */}
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">
+                Geographic Operations
+                {geoOperations.length > 0 && (
+                  <span className="ml-2 text-xs text-muted-foreground font-normal">{geoOperations.length} selected</span>
+                )}
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {userJurisdictions.map((j) => {
+                  const active = geoOperations.includes(j);
+                  return (
+                    <button
+                      key={j}
+                      onClick={() => toggleGeo(j)}
+                      className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
+                        active
+                          ? "bg-primary/10 border-primary/40 text-primary"
+                          : "border-border text-muted-foreground hover:border-primary/30"
+                      }`}
+                    >
+                      {j}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Key Stakeholders */}
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">
+                Key Stakeholders{" "}
+                <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={stakeholders}
+                onChange={(e) => setStakeholders(e.target.value)}
+                placeholder="CTO, VP of Compliance, DPO, Head of AI"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Used in the RACI table instead of generic role placeholders.</p>
+            </div>
+
+            {/* Organization Details */}
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">
+                Additional Context{" "}
+                <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+              </label>
+              <textarea
+                value={orgDetails}
+                onChange={(e) => setOrgDetails(e.target.value)}
+                placeholder="Department focus, specific AI systems in scope, compliance history..."
+                rows={2}
+                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+              />
+            </div>
           </div>
 
           {/* Generate Button */}
           <Button
             onClick={handleGenerate}
-            disabled={
-              generating ||
-              selectedRegIds.length === 0 ||
-              !policyType ||
-              !industry
-            }
+            disabled={generating || selectedRegIds.length === 0 || !policyType || !industry}
             className="w-full sm:w-auto"
             size="lg"
           >
@@ -519,14 +612,8 @@ export function PoliciesClient({
             <div className="text-center py-16">
               <FileText className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
               <p className="text-sm font-medium mb-1">No saved policies</p>
-              <p className="text-xs text-muted-foreground mb-4">
-                Generate a policy and save it to see it here.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setActiveTab("generate")}
-              >
+              <p className="text-xs text-muted-foreground mb-4">Generate a policy and save it to see it here.</p>
+              <Button variant="outline" size="sm" onClick={() => setActiveTab("generate")}>
                 <Plus className="w-3.5 h-3.5 mr-1" />
                 Generate your first policy
               </Button>
@@ -541,33 +628,21 @@ export function PoliciesClient({
                 >
                   <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {policy.title}
-                    </p>
+                    <p className="text-sm font-medium truncate">{policy.title}</p>
                     <div className="flex items-center gap-2 mt-1">
                       {getStatusBadge(policy.status)}
                       {policy.metadata?.policy_type ? (
                         <span className="text-xs text-muted-foreground">
-                          {POLICY_TYPE_OPTIONS.find(
-                            (o) =>
-                              o.value ===
-                              (policy.metadata as Record<string, string>)
-                                .policy_type
-                          )?.label ||
-                            String(policy.metadata.policy_type)}
+                          {POLICY_TYPE_OPTIONS.find((o) => o.value === (policy.metadata as Record<string, string>).policy_type)?.label || String(policy.metadata.policy_type)}
                         </span>
                       ) : null}
                       <span className="text-xs text-muted-foreground">
-                        &middot;{" "}
-                        {new Date(policy.updated_at).toLocaleDateString()}
+                        &middot; {new Date(policy.updated_at).toLocaleDateString()}
                       </span>
                     </div>
                   </div>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(policy.id);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); handleDelete(policy.id); }}
                     className="p-1.5 rounded text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"
                     title="Delete policy"
                   >
